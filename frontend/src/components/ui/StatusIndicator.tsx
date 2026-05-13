@@ -9,6 +9,8 @@ interface StatusIndicatorProps {
 }
 
 export default function StatusIndicator({ state, clipName }: StatusIndicatorProps) {
+  const normalizedClip = clipName ?? 'Detecting clip'
+
   return (
     <div className="pointer-events-none absolute left-5 top-5 z-30 rounded-2xl border border-cyan-300/25 bg-slate-950/40 px-4 py-3 backdrop-blur-xl">
       <div className="flex items-center gap-2">
@@ -23,7 +25,7 @@ export default function StatusIndicator({ state, clipName }: StatusIndicatorProp
       </div>
 
       <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-blue-100/45">
-        Animation: {clipName ?? 'Detecting clip'}
+        Animation: {normalizedClip}
       </p>
 
       <div className="mt-2 flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-blue-200/35">

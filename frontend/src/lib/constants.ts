@@ -28,9 +28,9 @@ export const SCENE_COLORS = {
 }
 
 export const CAMERA_DEFAULT = {
-  position: [0, 1.45, 4.9] as [number, number, number],
-  target: [0, 1.2, 0] as [number, number, number],
-  fov: 38,
+  position: [0, 1.2, 8.6] as [number, number, number],
+  target: [0, 1.1, 0] as [number, number, number],
+  fov: 34,
 }
 
-export const PARTICLE_COUNT = 220
+export const PARTICLE_COUNT = 170

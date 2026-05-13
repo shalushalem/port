@@ -17,6 +17,13 @@ interface EmissiveMaterial {
   emissiveIntensity: number
 }
 
+const MODEL_BASE_TRANSFORM = {
+  x: 0,
+  y: -1.98,
+  z: -3.05,
+  yaw: 0.06,
+}
+
 export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
   const gltf = useGLTF(ROBOT_MODEL_PATH)
   const clonedScene = useMemo(
@@ -28,14 +35,31 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
   const controllerRef = useRef<AnimationController | null>(null)
   const headNodeRef = useRef<Object3D | null>(null)
   const torsoNodeRef = useRef<Object3D | null>(null)
+  const jawNodeRef = useRef<Object3D | null>(null)
+  const eyeNodesRef = useRef<Array<{ node: Object3D; baseScaleY: number }>>([])
   const emissiveMaterialsRef = useRef<Array<{ mat: EmissiveMaterial; base: number }>>([])
   const setActiveClip = useAvatarStore((store) => store.setActiveClip)
+  const speechLevel = useAvatarStore((store) => store.speechLevel)
+  const isSpeaking = useAvatarStore((store) => store.isSpeaking)
 
   const baseHeadRotation = useRef({ x: 0, y: 0 })
   const baseTorsoRotation = useRef({ x: 0, y: 0 })
+  const baseJawRotation = useRef(0)
+  const blinkRef = useRef({
+    active: false,
+    start: 0,
+    duration: 0.12,
+    nextAt: 2.5,
+  })
+
+  const playProceduralIdle = () => {
+    controllerRef.current?.stopAll()
+    setActiveClip('ProceduralIdle')
+  }
 
   useEffect(() => {
     const emissiveMaterials: Array<{ mat: EmissiveMaterial; base: number }> = []
+    const eyes: Array<{ node: Object3D; baseScaleY: number }> = []
 
     clonedScene.traverse((node) => {
       if ((node as Mesh).isMesh) {
@@ -69,9 +93,16 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
       if (!torsoNodeRef.current && /(spine|chest|torso|upperbody)/.test(loweredName)) {
         torsoNodeRef.current = node
       }
+      if (!jawNodeRef.current && /(jaw|mouth|chin)/.test(loweredName)) {
+        jawNodeRef.current = node
+      }
+      if (/(eye|eyeball|eyelid)/.test(loweredName)) {
+        eyes.push({ node, baseScaleY: node.scale.y })
+      }
     })
 
     emissiveMaterialsRef.current = emissiveMaterials
+    eyeNodesRef.current = eyes
 
     if (headNodeRef.current) {
       baseHeadRotation.current = {
@@ -86,14 +117,25 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
         y: torsoNodeRef.current.rotation.y,
       }
     }
+    if (jawNodeRef.current) {
+      baseJawRotation.current = jawNodeRef.current.rotation.x
+    }
 
     const controller = new AnimationController(clonedScene, gltf.animations)
     controllerRef.current = controller
 
-    const idleClip = controller.getIdleClipName()
-    if (idleClip) {
-      controller.play(idleClip, { fadeDuration: 0.55 })
-      setActiveClip(idleClip)
+    const strictIdle = controller.findBestClipByState('idle')
+    if (strictIdle) {
+      controller.play(strictIdle, { fadeDuration: 0.55, timeScale: 0.72 })
+      setActiveClip(strictIdle)
+    } else {
+      const calmFallback = controller.findCalmFallbackClip()
+      if (calmFallback) {
+        controller.play(calmFallback, { fadeDuration: 0.55, timeScale: 0.42 })
+        setActiveClip(`${calmFallback} (calm)`)
+      } else {
+        playProceduralIdle()
+      }
     }
 
     return () => {
@@ -106,13 +148,34 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
     const controller = controllerRef.current
     if (!controller) return
 
-    const nextClip = controller.transitionToState(state, {
-      fadeDuration: state === 'talking' ? 0.32 : 0.48,
-    })
-
-    if (nextClip) {
-      setActiveClip(nextClip)
+    if (state === 'talking') {
+      const talkClip = controller.findBestClipByState('talking')
+      if (talkClip) {
+        controller.play(talkClip, { fadeDuration: 0.3, timeScale: 1 })
+        setActiveClip(talkClip)
+      }
+      return
     }
+
+    const relaxedClip =
+      controller.findBestClipByState(state) ??
+      controller.findBestClipByState('idle') ??
+      controller.findCalmFallbackClip()
+
+    if (relaxedClip) {
+      controller.play(relaxedClip, {
+        fadeDuration: 0.5,
+        timeScale: state === 'listening' ? 0.55 : state === 'thinking' ? 0.48 : 0.4,
+      })
+      setActiveClip(
+        relaxedClip.includes('(calm)') || state === 'idle'
+          ? relaxedClip
+          : `${relaxedClip} (calm)`,
+      )
+      return
+    }
+
+    playProceduralIdle()
   }, [state, setActiveClip])
 
   useFrame(({ clock, pointer }, delta) => {
@@ -121,26 +184,88 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
 
     if (groupRef.current) {
       const t = clock.getElapsedTime()
-      const floatY = Math.sin(t * 1.2) * 0.045
-      const floatX = Math.sin(t * 0.75) * 0.02
-      groupRef.current.position.y = MathUtils.damp(groupRef.current.position.y, floatY, 4.8, delta)
-      groupRef.current.position.x = MathUtils.damp(groupRef.current.position.x, floatX, 3.8, delta)
+      const floatY = Math.sin(t * 1.15) * 0.065
+      const floatX = Math.sin(t * 0.68) * 0.03
+      groupRef.current.position.y = MathUtils.damp(
+        groupRef.current.position.y,
+        MODEL_BASE_TRANSFORM.y + floatY,
+        4.8,
+        delta,
+      )
+      groupRef.current.position.x = MathUtils.damp(
+        groupRef.current.position.x,
+        MODEL_BASE_TRANSFORM.x + floatX,
+        3.8,
+        delta,
+      )
+      groupRef.current.position.z = MathUtils.damp(
+        groupRef.current.position.z,
+        MODEL_BASE_TRANSFORM.z,
+        4.2,
+        delta,
+      )
+      groupRef.current.rotation.y = MathUtils.damp(
+        groupRef.current.rotation.y,
+        MODEL_BASE_TRANSFORM.yaw + Math.sin(t * 0.28) * 0.02,
+        2.8,
+        delta,
+      )
     }
 
     const headNode = headNodeRef.current
     if (headNode) {
-      const targetY = baseHeadRotation.current.y + pointer.x * 0.42
-      const targetX = baseHeadRotation.current.x + pointer.y * 0.18
+      const targetY = baseHeadRotation.current.y + pointer.x * 0.32
+      const targetX = baseHeadRotation.current.x + pointer.y * 0.14
       headNode.rotation.y = MathUtils.damp(headNode.rotation.y, targetY, 5.8, delta)
       headNode.rotation.x = MathUtils.damp(headNode.rotation.x, targetX, 5.8, delta)
     }
 
     const torsoNode = torsoNodeRef.current
     if (torsoNode) {
-      const targetY = baseTorsoRotation.current.y + pointer.x * 0.18
-      const targetX = baseTorsoRotation.current.x + pointer.y * 0.08
+      const targetY = baseTorsoRotation.current.y + pointer.x * 0.14
+      const targetX = baseTorsoRotation.current.x + pointer.y * 0.05
       torsoNode.rotation.y = MathUtils.damp(torsoNode.rotation.y, targetY, 4.2, delta)
       torsoNode.rotation.x = MathUtils.damp(torsoNode.rotation.x, targetX, 4.2, delta)
+    }
+
+    const jawNode = jawNodeRef.current
+    if (jawNode) {
+      const talkMod = isSpeaking ? speechLevel : 0
+      const targetJaw = baseJawRotation.current + talkMod * 0.22 + Math.sin(clock.elapsedTime * 16) * talkMod * 0.035
+      jawNode.rotation.x = MathUtils.damp(jawNode.rotation.x, targetJaw, 13, delta)
+    } else if (headNodeRef.current && isSpeaking) {
+      const subtleTalkNod = baseHeadRotation.current.x + speechLevel * 0.06
+      headNodeRef.current.rotation.x = MathUtils.damp(
+        headNodeRef.current.rotation.x,
+        subtleTalkNod,
+        8,
+        delta,
+      )
+    }
+
+    const blinkState = blinkRef.current
+    const t = clock.getElapsedTime()
+    if (!blinkState.active && t >= blinkState.nextAt) {
+      blinkState.active = true
+      blinkState.start = t
+      blinkState.duration = 0.11 + Math.random() * 0.06
+    }
+    if (blinkState.active) {
+      const progress = (t - blinkState.start) / blinkState.duration
+      if (progress >= 1) {
+        blinkState.active = false
+        blinkState.nextAt = t + 2 + Math.random() * 3
+      } else {
+        const blinkAmount = Math.sin(progress * Math.PI)
+        eyeNodesRef.current.forEach(({ node, baseScaleY }) => {
+          const targetY = baseScaleY * (1 - blinkAmount * 0.86)
+          node.scale.y = MathUtils.damp(node.scale.y, targetY, 30, delta)
+        })
+      }
+    } else {
+      eyeNodesRef.current.forEach(({ node, baseScaleY }) => {
+        node.scale.y = MathUtils.damp(node.scale.y, baseScaleY, 20, delta)
+      })
     }
 
     emissiveMaterialsRef.current.forEach(({ mat, base }) => {
@@ -150,7 +275,12 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
   })
 
   return (
-    <group ref={groupRef} position={[0, -1.18, 0]} rotation={[0, 0, 0]} scale={1.45}>
+    <group
+      ref={groupRef}
+      position={[MODEL_BASE_TRANSFORM.x, MODEL_BASE_TRANSFORM.y, MODEL_BASE_TRANSFORM.z]}
+      rotation={[0, MODEL_BASE_TRANSFORM.yaw, 0]}
+      scale={0.9}
+    >
       <primitive object={clonedScene} />
     </group>
   )

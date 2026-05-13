@@ -9,37 +9,17 @@ interface FloatingGridProps {
 
 function buildGridPositions() {
   const positions: number[] = []
-  const ringCount = 11
-  const ringSegments = 72
-  const maxRadius = 3.6
+  const halfSize = 6
+  const divisions = 18
+  const step = (halfSize * 2) / divisions
 
-  for (let ringIndex = 1; ringIndex <= ringCount; ringIndex++) {
-    const radius = (ringIndex / ringCount) * maxRadius
-    for (let segment = 0; segment < ringSegments; segment++) {
-      const a1 = (segment / ringSegments) * Math.PI * 2
-      const a2 = ((segment + 1) / ringSegments) * Math.PI * 2
-      positions.push(
-        Math.cos(a1) * radius,
-        0,
-        Math.sin(a1) * radius,
-        Math.cos(a2) * radius,
-        0,
-        Math.sin(a2) * radius,
-      )
-    }
-  }
+  for (let i = -divisions / 2; i <= divisions / 2; i++) {
+    const offset = i * step
 
-  const spokes = 24
-  for (let i = 0; i < spokes; i++) {
-    const angle = (i / spokes) * Math.PI * 2
-    positions.push(
-      0,
-      0,
-      0,
-      Math.cos(angle) * maxRadius,
-      0,
-      Math.sin(angle) * maxRadius,
-    )
+    // Grid lines parallel to Z
+    positions.push(offset, 0, -halfSize, offset, 0, halfSize)
+    // Grid lines parallel to X
+    positions.push(-halfSize, 0, offset, halfSize, 0, offset)
   }
 
   return new Float32Array(positions)
@@ -54,24 +34,29 @@ export default function FloatingGrid({ glowIntensity }: FloatingGridProps) {
     if (!gridRef.current) return
 
     const t = clock.getElapsedTime()
-    gridRef.current.rotation.y = t * 0.03
+    gridRef.current.rotation.y = MathUtils.damp(
+      gridRef.current.rotation.y,
+      Math.sin(t * 0.12) * 0.02,
+      2.2,
+      delta,
+    )
     gridRef.current.position.y = MathUtils.damp(
       gridRef.current.position.y,
-      0.06 + Math.sin(t * 0.8) * 0.015,
+      -2.08 + Math.sin(t * 0.55) * 0.02,
       4,
       delta,
     )
   })
 
   return (
-    <lineSegments ref={gridRef} position={[0, 0.04, 0]}>
+    <lineSegments ref={gridRef} position={[0, -2.08, 0]}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <lineBasicMaterial
         color="#38bdf8"
         transparent
-        opacity={0.1 + glowIntensity * 0.16}
+        opacity={0.035 + glowIntensity * 0.045}
       />
     </lineSegments>
   )

@@ -14,6 +14,16 @@ const CLIP_HINTS: Record<AvatarState, RegExp[]> = {
   talking: [/talk/i, /speak/i, /answer/i, /chat/i, /mouth/i],
 }
 
+const LOCOMOTION_OR_DANCE = /(walk|run|jog|sprint|hiphop|salsa|fight|rap)/i
+const CALM_FALLBACK_PRIORITY = [
+  /talk/i,
+  /idle/i,
+  /stand/i,
+  /pose/i,
+  /breathe/i,
+  /house/i,
+] as const
+
 export interface PlayOptions {
   fadeDuration?: number
   timeScale?: number
@@ -57,16 +67,36 @@ export class AnimationController {
   }
 
   getIdleClipName() {
-    return this.findBestClipByState('idle') ?? this.clipNames[0] ?? null
+    return this.findBestClipByState('idle') ?? this.findCalmFallbackClip()
   }
 
   findBestClipByState(state: AvatarState): string | null {
     const hints = CLIP_HINTS[state]
     for (const hint of hints) {
-      const found = this.clipNames.find((name) => hint.test(name))
+      const found = this.clipNames.find((name) => {
+        if (!hint.test(name)) return false
+        if (state !== 'talking' && this.isLocomotionLike(name)) return false
+        return true
+      })
       if (found) return found
     }
     return null
+  }
+
+  isLocomotionLike(name: string) {
+    return LOCOMOTION_OR_DANCE.test(name)
+  }
+
+  findCalmFallbackClip() {
+    for (const pattern of CALM_FALLBACK_PRIORITY) {
+      const byPriority = this.clipNames.find((name) => pattern.test(name))
+      if (byPriority && !this.isLocomotionLike(byPriority)) {
+        return byPriority
+      }
+    }
+
+    const firstSafe = this.clipNames.find((name) => !this.isLocomotionLike(name))
+    return firstSafe ?? null
   }
 
   play(name: string, options: PlayOptions = {}) {
@@ -108,9 +138,7 @@ export class AnimationController {
   }
 
   transitionToState(state: AvatarState, options: PlayOptions = {}) {
-    const clipName =
-      this.findBestClipByState(state) ??
-      this.getIdleClipName()
+    const clipName = this.findBestClipByState(state) ?? this.getIdleClipName()
 
     if (!clipName) return null
     this.play(clipName, options)

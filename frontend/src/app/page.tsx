@@ -1,186 +1,221 @@
 'use client'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Waves } from 'lucide-react'
 import RobotScene from '@/components/scene/RobotScene'
-import SubtitlePanel from '@/components/ui/SubtitlePanel'
-import ControlPanel from '@/components/ui/ControlPanel'
-import StatusIndicator from '@/components/ui/StatusIndicator'
-import {
-  AvatarState,
-  INITIAL_SUBTITLE,
-  SCENE_COLORS,
-} from '@/lib/constants'
+import { getAIResponse } from '@/lib/ai'
+import { speakText, stopSpeech } from '@/lib/speech'
 import { useAvatarStore } from '@/store/avatarStore'
 
-function getCinematicReply(command: string) {
-  const normalized = command.toLowerCase()
+type BrowserSpeechRecognition = {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onstart: (() => void) | null
+  onresult: ((event: any) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+  start: () => void
+  stop: () => void
+}
 
-  if (normalized.includes('project')) {
-    return 'I architect cinematic AI experiences, production web systems, and intelligent automations. I can open any project node on command.'
-  }
-  if (normalized.includes('hire') || normalized.includes('work')) {
-    return 'Mission accepted. I am available for freelance AI engineering and full-stack product builds. Let us design your next system.'
-  }
-  if (normalized.includes('stack') || normalized.includes('tech')) {
-    return 'Core stack: Next.js, TypeScript, Python, React Three Fiber, and agentic AI orchestration. Built for speed, scale, and cinematic presence.'
-  }
-  if (normalized.includes('hello') || normalized.includes('hi')) {
-    return 'Hello. Neural handshake complete. Tell me what you want to build and I will map the path.'
-  }
+type BrowserSpeechRecognitionCtor = new () => BrowserSpeechRecognition
 
-  return 'Command received. I can discuss architecture, product strategy, and implementation details in real time. Continue when ready.'
+declare global {
+  interface Window {
+    webkitSpeechRecognition?: BrowserSpeechRecognitionCtor
+    SpeechRecognition?: BrowserSpeechRecognitionCtor
+  }
 }
 
 export default function HomePage() {
-  const {
-    state,
-    glowIntensity,
-    subtitle,
-    commandInput,
-    isTyping,
-    activeClip,
-    setState,
-    setSubtitle,
-    setCommandInput,
-    setTyping,
-    resetToIdle,
-  } = useAvatarStore()
+  const state = useAvatarStore((store) => store.state)
+  const glowIntensity = useAvatarStore((store) => store.glowIntensity)
+  const setState = useAvatarStore((store) => store.setState)
+  const setSubtitle = useAvatarStore((store) => store.setSubtitle)
+  const setListening = useAvatarStore((store) => store.setListening)
+  const setSpeaking = useAvatarStore((store) => store.setSpeaking)
+  const setSpeechLevel = useAvatarStore((store) => store.setSpeechLevel)
+  const resetToIdle = useAvatarStore((store) => store.resetToIdle)
 
-  useEffect(() => {
-    setSubtitle(INITIAL_SUBTITLE)
-    setState('idle')
-  }, [setState, setSubtitle])
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null)
+  const transcriptRef = useRef('')
+  const speechPulseTimerRef = useRef<number | null>(null)
+  const introPlayedRef = useRef(false)
 
-  const runNarrativeState = (
-    nextState: AvatarState,
-    message: string,
-    delay: number,
-  ) =>
-    new Promise<void>((resolve) => {
-      setTimeout(() => {
-        setState(nextState)
-        setSubtitle(message)
-        resolve()
-      }, delay)
-    })
+  const stopSpeechPulse = useCallback(() => {
+    if (speechPulseTimerRef.current) {
+      window.clearInterval(speechPulseTimerRef.current)
+      speechPulseTimerRef.current = null
+    }
+    setSpeechLevel(0)
+  }, [setSpeechLevel])
 
-  const handleSubmitCommand = async (command: string) => {
-    const trimmed = command.trim()
-    if (!trimmed) return
+  const startSpeechPulse = useCallback(() => {
+    stopSpeechPulse()
+    setSpeechLevel(0.6)
+    speechPulseTimerRef.current = window.setInterval(() => {
+      setSpeechLevel(0.35 + Math.random() * 0.65)
+    }, 88)
+  }, [setSpeechLevel, stopSpeechPulse])
 
-    setCommandInput('')
-    setTyping(true)
-    setState('thinking')
-    setSubtitle(`Analyzing command: ${trimmed}`)
+  const speakReply = useCallback((text: string) => {
+    setSubtitle(text)
+    stopSpeech()
+    startSpeechPulse()
 
-    await runNarrativeState('thinking', 'Neural processors are evaluating your request...', 600)
-    await runNarrativeState('talking', getCinematicReply(trimmed), 850)
+    const utterance = speakText(
+      text,
+      () => {
+        setSpeaking(true)
+        setState('talking')
+      },
+      () => {
+        stopSpeechPulse()
+        setSpeaking(false)
+        window.setTimeout(() => {
+          resetToIdle()
+        }, 140)
+      },
+      () => {
+        setSpeechLevel(0.92)
+      },
+    )
 
-    setTimeout(() => {
-      setTyping(false)
+    if (!utterance) {
+      stopSpeechPulse()
+      setSpeaking(false)
       resetToIdle()
-    }, 2800)
-  }
+    }
+  }, [resetToIdle, setSpeaking, setSpeechLevel, setState, setSubtitle, startSpeechPulse, stopSpeechPulse])
 
-  const handleVoiceToggle = async () => {
-    if (state === 'listening') {
-      setTyping(true)
-      setState('thinking')
-      setSubtitle('Voice stream captured. Interpreting intent...')
-      await runNarrativeState(
-        'talking',
-        'Voice channel is online. In the next phase, this connects to live speech-to-text and streaming LLM responses.',
-        900,
-      )
-      setTimeout(() => {
-        setTyping(false)
-        resetToIdle()
-      }, 2800)
+  const runVoiceRound = useCallback(async (heardText: string) => {
+    setState('thinking')
+    setSubtitle('Processing voice input...')
+    try {
+      const response = await getAIResponse(heardText)
+      speakReply(response)
+    } catch {
+      speakReply("I hit a processing issue. Let's try that again.")
+    }
+  }, [setState, setSubtitle, speakReply])
+
+  const startListening = useCallback(() => {
+    if (typeof window === 'undefined') return
+    const RecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition
+    if (!RecognitionCtor) {
+      speakReply('Speech recognition is not available in this browser.')
       return
     }
 
-    if (state === 'thinking' || state === 'talking') return
+    stopSpeech()
+    stopSpeechPulse()
+    transcriptRef.current = ''
 
-    setState('listening')
-    setSubtitle('Listening. Speak your command to the consciousness core.')
-  }
+    const recognition = new RecognitionCtor()
+    recognitionRef.current = recognition
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => {
+      setListening(true)
+      setState('listening')
+      setSubtitle('Listening...')
+    }
+
+    recognition.onresult = (event: any) => {
+      const joined = Array.from(event.results)
+        .map((result: any) => result[0]?.transcript ?? '')
+        .join('')
+        .trim()
+      transcriptRef.current = joined
+      if (joined) setSubtitle(joined)
+    }
+
+    recognition.onerror = () => {
+      setListening(false)
+      resetToIdle()
+    }
+
+    recognition.onend = () => {
+      setListening(false)
+      const heard = transcriptRef.current.trim()
+      if (heard) {
+        runVoiceRound(heard)
+      } else {
+        resetToIdle()
+      }
+    }
+
+    recognition.start()
+  }, [resetToIdle, runVoiceRound, setListening, setState, setSubtitle, speakReply, stopSpeechPulse])
+
+  const stopListening = useCallback(() => {
+    recognitionRef.current?.stop()
+    setListening(false)
+  }, [setListening])
+
+  useEffect(() => {
+    setState('idle')
+    setSubtitle('Voice core online. Press V to talk.')
+
+    const onPointerDown = () => {
+      if (introPlayedRef.current) return
+      introPlayedRef.current = true
+      speakReply('Hello. I am Devarapalli Shalem Raju. Press V and speak with me.')
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return
+      const key = event.key.toLowerCase()
+      if (key === 'v') {
+        event.preventDefault()
+        if (useAvatarStore.getState().isListening) {
+          stopListening()
+        } else {
+          startListening()
+        }
+      }
+      if (key === 'r') {
+        event.preventDefault()
+        runVoiceRound('hello')
+      }
+    }
+
+    window.addEventListener('pointerdown', onPointerDown, { once: true })
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('pointerdown', onPointerDown)
+      recognitionRef.current?.stop()
+      stopSpeech()
+      stopSpeechPulse()
+    }
+  }, [runVoiceRound, setState, setSubtitle, speakReply, startListening, stopListening, stopSpeechPulse])
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[#050816]">
       <div className="absolute inset-0 bg-neural-chamber" />
+      <div className="absolute inset-0 chamber-grid" />
+      <div className="absolute inset-0 chamber-orbits" />
+      <div className="absolute inset-0 chamber-neon-shadow" />
       <div className="absolute inset-0 chamber-haze" />
-      <div className="absolute inset-0 chamber-scanlines opacity-20" />
+      <div className="absolute inset-0 chamber-scanlines opacity-8" />
+      <div className="pointer-events-none absolute inset-x-0 top-[42%] h-px bg-cyan-300/12" />
 
-      <RobotScene state={state} glowIntensity={glowIntensity} />
-
-      <StatusIndicator state={state} clipName={activeClip} />
-
-      <motion.div
-        className="pointer-events-none absolute right-5 top-5 z-30 rounded-2xl border border-cyan-300/22 bg-slate-950/40 px-4 py-3 backdrop-blur-xl"
-        initial={{ opacity: 0, x: 16 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-      >
-        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-cyan-100/65">
-          <Sparkles size={12} />
-          Consciousness Chamber
-        </div>
-        <p className="mt-2 max-w-[280px] text-xs leading-relaxed text-blue-100/55">
-          Real GLB animations. Stateful AI persona. Ready for live voice, lip sync, and streaming backend.
-        </p>
-      </motion.div>
+      <RobotScene state={state} glowIntensity={Math.max(glowIntensity, 0.72)} />
 
       <motion.section
         className="pointer-events-none absolute left-1/2 top-8 z-30 -translate-x-1/2 text-center"
-        initial={{ opacity: 0, y: -12 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.1 }}
+        transition={{ duration: 0.9 }}
       >
-        <p className="text-[10px] uppercase tracking-[0.34em] text-cyan-200/44">AI Digital Consciousness</p>
-        <h1 className="holo-text mt-2 text-[clamp(30px,4vw,56px)] font-semibold tracking-[0.08em]">
-          SHALEM
+        <h1 className="holo-text text-[clamp(22px,2.8vw,40px)] font-semibold tracking-[0.09em]">
+          DEVARAPALLI SHALEM RAJU
         </h1>
-        <p className="mt-2 text-sm text-blue-100/70 md:text-base">
-          Cinematic AI engineer portfolio powered by a real-time avatar core.
-        </p>
       </motion.section>
-
-      <motion.div
-        className="pointer-events-none absolute left-5 bottom-36 z-30 rounded-2xl border border-cyan-300/18 bg-slate-950/35 px-4 py-3 backdrop-blur-xl"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-      >
-        <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-cyan-100/62">
-          <Waves size={12} />
-          Neural Atmosphere
-        </p>
-        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] uppercase tracking-[0.14em] text-blue-100/40">
-          <span>State</span>
-          <span>{state}</span>
-          <span>Glow</span>
-          <span>{glowIntensity.toFixed(2)}</span>
-        </div>
-      </motion.div>
-
-      <SubtitlePanel text={subtitle} state={state} />
-
-      <ControlPanel
-        state={state}
-        commandInput={commandInput}
-        isTyping={isTyping}
-        onCommandChange={setCommandInput}
-        onSubmitCommand={handleSubmitCommand}
-        onVoiceToggle={handleVoiceToggle}
-      />
-
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-44"
-        style={{
-          background: `linear-gradient(180deg, transparent 0%, ${SCENE_COLORS.base} 100%)`,
-        }}
-      />
     </main>
   )
 }

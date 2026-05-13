@@ -244,39 +244,79 @@ body {
 
 .bg-neural-chamber {
   background:
-    radial-gradient(ellipse 70% 50% at 50% -8%, rgba(0, 217, 255, 0.12) 0%, transparent 68%),
-    radial-gradient(ellipse 45% 35% at 88% 72%, rgba(124, 58, 237, 0.12) 0%, transparent 68%),
-    radial-gradient(ellipse 40% 38% at 12% 65%, rgba(110, 231, 255, 0.08) 0%, transparent 72%),
-    linear-gradient(180deg, #050816 0%, #091328 45%, #0b1120 100%);
+    radial-gradient(ellipse 46% 38% at 50% 44%, rgba(32, 118, 255, 0.34) 0%, rgba(10, 36, 86, 0.24) 32%, transparent 74%),
+    radial-gradient(ellipse 62% 52% at 50% 102%, rgba(14, 56, 140, 0.24) 0%, rgba(5, 18, 48, 0.08) 42%, transparent 78%),
+    linear-gradient(180deg, #020818 0%, #04102a 48%, #020915 100%);
+}
+
+.chamber-grid {
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.075) 1px, transparent 1px);
+  background-size: 72px 72px, 72px 72px;
+  opacity: 0.3;
+}
+
+.chamber-orbits {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(56, 189, 248, 0.18) 0%, rgba(56, 189, 248, 0.06) 26%, transparent 58%),
+    repeating-radial-gradient(
+      circle at 50% 44%,
+      rgba(56, 189, 248, 0.08) 0 1px,
+      transparent 1px 52px
+    );
+  opacity: 0.34;
+  mix-blend-mode: screen;
+}
+
+.chamber-neon-shadow {
+  background:
+    radial-gradient(ellipse 28% 36% at 50% 47%, rgba(0, 217, 255, 0.42) 0%, rgba(0, 217, 255, 0.2) 26%, transparent 68%),
+    radial-gradient(ellipse 42% 46% at 50% 52%, rgba(37, 99, 235, 0.22) 0%, rgba(37, 99, 235, 0.08) 38%, transparent 78%);
+  filter: blur(6px);
+  animation: neonPulse 6.5s ease-in-out infinite;
+  mix-blend-mode: screen;
 }
 
 .chamber-haze {
   background:
-    radial-gradient(ellipse 50% 35% at 52% 32%, rgba(0, 217, 255, 0.12), transparent 70%),
-    radial-gradient(ellipse 45% 30% at 28% 74%, rgba(110, 231, 255, 0.08), transparent 72%),
-    radial-gradient(ellipse 36% 28% at 84% 76%, rgba(124, 58, 237, 0.1), transparent 72%);
-  animation: hazeDrift 18s ease-in-out infinite;
+    radial-gradient(ellipse 54% 40% at 50% 44%, rgba(0, 217, 255, 0.09), transparent 72%),
+    radial-gradient(ellipse 36% 30% at 24% 72%, rgba(56, 189, 248, 0.06), transparent 74%),
+    radial-gradient(ellipse 32% 28% at 82% 74%, rgba(124, 58, 237, 0.06), transparent 74%);
+  animation: hazeDrift 20s ease-in-out infinite;
 }
 
 .chamber-scanlines {
   background-image: repeating-linear-gradient(
     to bottom,
-    rgba(125, 211, 252, 0.045) 0px,
-    rgba(125, 211, 252, 0.045) 1px,
+    rgba(125, 211, 252, 0.022) 0px,
+    rgba(125, 211, 252, 0.022) 1px,
     transparent 1px,
     transparent 4px
   );
+}
+
+@keyframes neonPulse {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.86;
+    transform: scale(1.03);
+  }
 }
 
 @keyframes hazeDrift {
   0%,
   100% {
     transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.42;
+    opacity: 0.24;
   }
   50% {
-    transform: translate3d(0, -8px, 0) scale(1.03);
-    opacity: 0.62;
+    transform: translate3d(0, -6px, 0) scale(1.02);
+    opacity: 0.4;
   }
 }
 

@@ -18,7 +18,7 @@ export default function VoiceOrb({ state, onToggle }: VoiceOrbProps) {
     <motion.button
       type="button"
       onClick={onToggle}
-      className="relative flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/10 text-cyan-100"
+      className="relative flex h-[52px] w-[52px] items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/10 text-cyan-100 md:h-14 md:w-14"
       style={{
         boxShadow: active
           ? '0 0 28px rgba(0,217,255,0.55), inset 0 0 18px rgba(110,231,255,0.3)'
@@ -30,8 +30,14 @@ export default function VoiceOrb({ state, onToggle }: VoiceOrbProps) {
     >
       <motion.span
         className="absolute inset-0 rounded-full border border-cyan-300/30"
-        animate={active ? { scale: [1, 1.24, 1], opacity: [0.62, 0.04, 0.62] } : { opacity: 0 }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        animate={
+          isListening
+            ? { scale: [1, 1.32, 1], opacity: [0.72, 0.02, 0.72] }
+            : active
+              ? { scale: [1, 1.24, 1], opacity: [0.62, 0.04, 0.62] }
+              : { opacity: 0 }
+        }
+        transition={{ duration: isListening ? 1.05 : 1.5, repeat: Infinity, ease: 'easeInOut' }}
       />
 
       <motion.span

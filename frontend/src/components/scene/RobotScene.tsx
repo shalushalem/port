@@ -20,20 +20,20 @@ function CameraRig({ state }: { state: AvatarState }) {
 
   useFrame(({ camera, clock, pointer }, delta) => {
     const t = clock.getElapsedTime()
-    const talkingBoost = state === 'talking' ? 0.18 : state === 'listening' ? 0.12 : 0.08
+    const talkingBoost = state === 'talking' ? 0.12 : state === 'listening' ? 0.1 : 0.06
 
-    const targetX = Math.sin(t * 0.22) * 0.1 + pointer.x * talkingBoost
-    const targetY = CAMERA_DEFAULT.position[1] + Math.sin(t * 0.32) * 0.04 + pointer.y * 0.08
-    const targetZ = CAMERA_DEFAULT.position[2] + Math.sin(t * 0.16) * 0.09
+    const targetX = Math.sin(t * 0.22) * 0.07 + pointer.x * talkingBoost
+    const targetY = CAMERA_DEFAULT.position[1] + Math.sin(t * 0.32) * 0.03 + pointer.y * 0.05
+    const targetZ = CAMERA_DEFAULT.position[2] + Math.sin(t * 0.16) * 0.06
 
     camera.position.x = MathUtils.damp(camera.position.x, targetX, 1.8, delta)
     camera.position.y = MathUtils.damp(camera.position.y, targetY, 1.8, delta)
     camera.position.z = MathUtils.damp(camera.position.z, targetZ, 1.8, delta)
 
-    lookAtTarget.current.x = MathUtils.damp(lookAtTarget.current.x, pointer.x * 0.22, 2.4, delta)
+    lookAtTarget.current.x = MathUtils.damp(lookAtTarget.current.x, pointer.x * 0.16, 2.4, delta)
     lookAtTarget.current.y = MathUtils.damp(
       lookAtTarget.current.y,
-      CAMERA_DEFAULT.target[1] + pointer.y * 0.08,
+      CAMERA_DEFAULT.target[1] + pointer.y * 0.06,
       2.4,
       delta,
     )
@@ -50,11 +50,14 @@ export default function RobotScene({ state, glowIntensity }: RobotSceneProps) {
     <div className="absolute inset-0">
       <Canvas
         shadows
-        dpr={[1, 1.75]}
+        dpr={[1, 1.6]}
         gl={{
           antialias: true,
           alpha: true,
           powerPreference: 'high-performance',
+        }}
+        onCreated={({ gl }) => {
+          gl.toneMappingExposure = 1.2
         }}
         camera={{
           position: CAMERA_DEFAULT.position,
@@ -65,7 +68,7 @@ export default function RobotScene({ state, glowIntensity }: RobotSceneProps) {
       >
         <Suspense fallback={null}>
           <color attach="background" args={[SCENE_COLORS.base]} />
-          <fog attach="fog" args={[SCENE_COLORS.base, 5.4, 13.5]} />
+          <fog attach="fog" args={[SCENE_COLORS.base, 8.4, 22]} />
 
           <AdaptiveDpr pixelated />
           <CameraRig state={state} />
@@ -75,11 +78,11 @@ export default function RobotScene({ state, glowIntensity }: RobotSceneProps) {
           <RobotModel state={state} glowIntensity={glowIntensity} />
 
           <ContactShadows
-            position={[0, -1.12, 0]}
-            opacity={0.34}
-            scale={5}
-            blur={1.9}
-            far={3.6}
+            position={[0, -2.1, 0]}
+            opacity={0.3}
+            scale={5.8}
+            blur={2.1}
+            far={4.2}
             resolution={512}
             color="#061225"
             frames={1}
