@@ -40,6 +40,7 @@ You can run in fully local mock mode by setting `USE_MOCK_AI=true`.
 - Brain scene + neural particles (R3F)
 - 2.5D avatar layer with floating/voice-reactive glow
 - Voice record/upload flow (browser MediaRecorder -> FastAPI)
+- Realtime orchestration websocket (`/ws/orchestrate`) with streamed `speech_chunk` + `event_batch` + `final`
 - Intent + event engine (`SHOW_AVATAR`, `HIGHLIGHT_PROJECT`, `BACKGROUND_CHANGE`, `CONTACT_INTENT`)
 - Dynamic project and contact overlays
 - SEO pages (`/ai-developer`, `/freelance-ai-engineer`, `/full-stack-ai-developer`, `/projects`, `/case-studies`, `/blog`)
@@ -50,3 +51,10 @@ You can run in fully local mock mode by setting `USE_MOCK_AI=true`.
 - Add Whisper transcription + TTS playback
 - Add Redis conversation memory + Supabase storage
 - Add calendly/resend production contact workflow
+
+## 6. GLB Avatar Drop-In
+
+- Put your character file at: `frontend/public/assets/avatar/shalem.glb`
+- Scene auto-detects this file and switches from fallback hologram to your full 3D avatar.
+- Set `NEXT_PUBLIC_AVATAR_MODE=3d` to render GLB avatar mode.
+- Default `NEXT_PUBLIC_AVATAR_MODE=2d` uses the cinematic layered PNG avatar system.

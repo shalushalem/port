@@ -1,34 +1,38 @@
 {
-  "name": "digital-consciousness-frontend",
+  "name": "shalem-portfolio",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@react-three/drei": "10.7.7",
-    "@react-three/fiber": "9.6.1",
+    "next": "15.5.18",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "framer-motion": "^11.3.0",
+    "gsap": "^3.12.5",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/drei": "^10.7.7",
+    "three": "^0.167.0",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.5.0",
+    "tsparticles": "^3.5.0",
     "clsx": "^2.1.1",
-    "framer-motion": "^11.18.2",
-    "gsap": "^3.12.7",
-    "howler": "^2.2.4",
-    "next": "^15.0.0",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "three": "^0.173.0",
-    "zustand": "^5.0.3"
+    "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
-    "@types/howler": "^2.2.12",
-    "@types/node": "^22.13.4",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.2"
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.167.0",
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "15.5.18"
   }
 }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from urllib import error, request
 
 from app.config import Settings
@@ -16,15 +17,29 @@ Keep responses under 90 words.
 
 
 def generate_reply(user_input: str, context_lines: list[str], settings: Settings) -> str:
+    chunks = list(stream_reply(user_input, context_lines, settings))
+    speech = "".join(chunks).strip()
+    return speech or generate_mock_reply(user_input)
+
+
+def stream_reply(user_input: str, context_lines: list[str], settings: Settings) -> Iterable[str]:
     if settings.use_mock_ai:
-        return generate_mock_reply(user_input)
+        yield from stream_mock_reply(user_input)
+        return
 
     provider = settings.llm_provider.strip().lower()
     if provider == "ollama":
-        return generate_reply_ollama(user_input, context_lines, settings)
+        streamed = False
+        for delta in stream_reply_ollama(user_input, context_lines, settings):
+            streamed = True
+            yield delta
+        if not streamed:
+            yield generate_mock_reply(user_input)
+        return
     if provider == "openai":
-        return generate_reply_openai(user_input, context_lines, settings)
-    return generate_mock_reply(user_input)
+        yield generate_reply_openai(user_input, context_lines, settings)
+        return
+    yield generate_mock_reply(user_input)
 
 
 def generate_reply_ollama(user_input: str, context_lines: list[str], settings: Settings) -> str:
@@ -50,6 +65,43 @@ def generate_reply_ollama(user_input: str, context_lines: list[str], settings: S
         return content or generate_mock_reply(user_input)
     except (error.URLError, TimeoutError, json.JSONDecodeError):
         return generate_mock_reply(user_input)
+
+
+def stream_reply_ollama(user_input: str, context_lines: list[str], settings: Settings) -> Iterable[str]:
+    prompt = (
+        f"Recent conversation context:\n{chr(10).join(context_lines) if context_lines else 'none'}\n\n"
+        f"User: {user_input}\nAssistant:"
+    )
+    payload = {
+        "model": settings.ollama_model,
+        "stream": True,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+    }
+    endpoint = f"{settings.ollama_base_url.rstrip('/')}/api/chat"
+    req = request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with request.urlopen(req, timeout=settings.ollama_timeout_seconds) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8").strip()
+                if not line:
+                    continue
+                packet = json.loads(line)
+                delta = str(packet.get("message", {}).get("content", ""))
+                if delta:
+                    yield delta
+                if bool(packet.get("done")):
+                    break
+    except (error.URLError, TimeoutError, json.JSONDecodeError):
+        return
 
 
 def generate_reply_openai(user_input: str, context_lines: list[str], settings: Settings) -> str:
@@ -95,3 +147,11 @@ def generate_mock_reply(user_input: str) -> str:
     return (
         "I am listening. Ask me about my projects, your product idea, or how we can build your AI system end-to-end."
     )
+
+
+def stream_mock_reply(user_input: str) -> Iterable[str]:
+    speech = generate_mock_reply(user_input)
+    words = speech.split(" ")
+    for index, word in enumerate(words):
+        suffix = " " if index < len(words) - 1 else ""
+        yield f"{word}{suffix}"
