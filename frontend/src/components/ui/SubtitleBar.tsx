@@ -6,9 +6,15 @@ interface SubtitleBarProps {
   text: string
   isActive: boolean
   isSpeaking: boolean
+  className?: string
 }
 
-export default function SubtitleBar({ text, isActive, isSpeaking }: SubtitleBarProps) {
+export default function SubtitleBar({
+  text,
+  isActive,
+  isSpeaking,
+  className = '',
+}: SubtitleBarProps) {
   const [displayText, setDisplayText] = useState('')
   const [charIndex, setCharIndex] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -24,7 +30,7 @@ export default function SubtitleBar({ text, isActive, isSpeaking }: SubtitleBarP
     setCharIndex(0)
 
     let i = 0
-    const speed = 28 // ms per character
+    const speed = 24
 
     const type = () => {
       if (i <= text.length) {
@@ -35,8 +41,7 @@ export default function SubtitleBar({ text, isActive, isSpeaking }: SubtitleBarP
       }
     }
 
-    timerRef.current = setTimeout(type, 100)
-
+    timerRef.current = setTimeout(type, 80)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
@@ -46,113 +51,68 @@ export default function SubtitleBar({ text, isActive, isSpeaking }: SubtitleBarP
 
   return (
     <motion.div
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 w-full"
-      style={{ maxWidth: '680px', padding: '0 24px' }}
-      initial={{ opacity: 0, y: 20 }}
+      className={`fixed left-1/2 z-40 w-full max-w-[760px] -translate-x-1/2 px-5 ${className}`}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 2.8, duration: 1, ease: [0.23, 1, 0.32, 1] }}
+      transition={{ duration: 0.7 }}
     >
       <AnimatePresence mode="wait">
         {text && (
           <motion.div
-            key={text.substring(0, 20)}
-            className="glass rounded-2xl px-6 py-4 relative overflow-hidden"
-            style={{
-              boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-            }}
-            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            key={text.slice(0, 24)}
+            className="glass rounded-2xl px-5 py-4 relative overflow-hidden"
+            style={{ boxShadow: '0 12px 44px rgba(2, 6, 23, 0.5)' }}
+            initial={{ opacity: 0, y: 10, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+            exit={{ opacity: 0, y: -8, scale: 0.985 }}
+            transition={{ duration: 0.45 }}
           >
-            {/* Accent line top */}
             <div
               className="absolute top-0 left-0 right-0 h-px"
               style={{
-                background: 'linear-gradient(90deg, transparent, rgba(6,182,212,0.4), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.52), transparent)',
               }}
             />
 
-            {/* Speaker label */}
-            <div className="flex items-center gap-2 mb-2">
-              <motion.div
+            <div className="mb-2 flex items-center gap-2">
+              <motion.span
                 className="status-dot rounded-full"
                 style={{
-                  width: '6px',
-                  height: '6px',
-                  background: isSpeaking ? '#06b6d4' : 'rgba(96,165,250,0.4)',
+                  width: 6,
+                  height: 6,
+                  background: isSpeaking ? '#22d3ee' : 'rgba(125, 211, 252, 0.45)',
                 }}
               />
-              <span
-                className="text-xs tracking-widest uppercase"
-                style={{
-                  color: 'rgba(96,165,250,0.45)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '10px',
-                  letterSpacing: '0.2em',
-                }}
-              >
-                Shalem · AI
+              <span className="text-[10px] uppercase tracking-[0.24em] text-blue-200/45">
+                Shalem // AI Channel
               </span>
             </div>
 
-            {/* Text */}
-            <p
-              className="text-base leading-relaxed"
-              style={{
-                color: 'rgba(219,234,254,0.92)',
-                fontFamily: 'var(--font-body)',
-                fontWeight: 300,
-                letterSpacing: '0.01em',
-              }}
-            >
+            <p className="text-sm leading-relaxed text-slate-100/90 md:text-base">
               {displayText}
               {charIndex < text.length && (
                 <span
-                  className="inline-block ml-0.5"
+                  className="ml-1 inline-block align-middle"
                   style={{
-                    width: '2px',
-                    height: '14px',
-                    background: '#06b6d4',
-                    verticalAlign: 'middle',
+                    width: 2,
+                    height: 14,
+                    background: '#22d3ee',
                     animation: 'blink-cursor 0.8s step-end infinite',
                   }}
                 />
               )}
             </p>
 
-            {/* Shimmer overlay */}
             <motion.div
-              className="absolute inset-0 pointer-events-none rounded-2xl"
+              className="pointer-events-none absolute inset-0 rounded-2xl"
               style={{
-                background: 'linear-gradient(90deg, transparent 0%, rgba(6,182,212,0.03) 50%, transparent 100%)',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.04) 50%, transparent 100%)',
                 backgroundSize: '200% 100%',
               }}
               animate={{ backgroundPosition: ['200% center', '-200% center'] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
             />
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Idle prompt */}
-      <AnimatePresence>
-        {!text && (
-          <motion.p
-            className="text-center"
-            style={{
-              color: 'rgba(96,165,250,0.3)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
-              letterSpacing: '0.2em',
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ delay: 1 }}
-          >
-            · · · ask me anything · · ·
-          </motion.p>
         )}
       </AnimatePresence>
     </motion.div>

@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Shalem | AI Engineer & Full Stack Developer',
-  description: 'Freelance AI Engineer & Full Stack Developer from Vijayawada, India. Building intelligent digital experiences. Available for hire.',
+  title: 'Shalem | AI Digital Consciousness',
+  description: 'AI engineer and full stack developer from Vijayawada, India. A cinematic digital consciousness experience with voice interaction.',
   keywords: [
     'AI Engineer', 'Full Stack Developer', 'Freelancer India',
     'React Developer', 'Next.js Developer', 'Machine Learning',
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Shalem' }],
   openGraph: {
-    title: 'Shalem | AI Engineer & Full Stack Developer',
-    description: 'Freelance AI Engineer building intelligent digital experiences.',
+    title: 'Shalem | AI Digital Consciousness',
+    description: 'Cinematic AI avatar portfolio with real-time 3D presence and voice-first interaction.',
     type: 'website',
   },
   twitter: {
@@ -47,7 +47,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-cinematic overflow-hidden">
+      <body className="bg-neural-chamber">
         {children}
       </body>
     </html>

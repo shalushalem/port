@@ -9,13 +9,21 @@ interface AvatarProps {
   isSpeaking: boolean
   isListening: boolean
   isVisible: boolean
+  showPlate?: boolean
+  className?: string
 }
 
-export default function Avatar({ isSpeaking, isListening, isVisible }: AvatarProps) {
+export default function Avatar({
+  isSpeaking,
+  isListening,
+  isVisible,
+  showPlate = true,
+  className = '',
+}: AvatarProps) {
   return (
     <AnimatePresence>
       {isVisible && (
-        <ParallaxLayer depth={0.2} className="absolute inset-0 flex items-center justify-center">
+        <ParallaxLayer depth={0.2} className={`absolute inset-0 flex items-center justify-center ${className}`}>
           <motion.div
             className="relative flex items-center justify-center"
             initial={{ opacity: 0, scale: 0.85, y: 30 }}
@@ -23,7 +31,6 @@ export default function Avatar({ isSpeaking, isListening, isVisible }: AvatarPro
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 1.6, ease: [0.23, 1, 0.32, 1], delay: 0.5 }}
           >
-            {/* Glow rings behind avatar */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               {[280, 340, 400, 460].map((size, i) => (
                 <motion.div
@@ -48,13 +55,13 @@ export default function Avatar({ isSpeaking, isListening, isVisible }: AvatarPro
               ))}
             </div>
 
-            {/* Volumetric glow behind avatar */}
             <motion.div
               className="absolute rounded-full pointer-events-none"
               style={{
-                width: '320px',
-                height: '420px',
-                background: 'radial-gradient(ellipse at 50% 60%, rgba(37,99,235,0.22) 0%, rgba(6,182,212,0.08) 40%, transparent 70%)',
+                width: '340px',
+                height: '450px',
+                background:
+                  'radial-gradient(ellipse at 50% 60%, rgba(37,99,235,0.22) 0%, rgba(6,182,212,0.08) 40%, transparent 70%)',
                 filter: 'blur(20px)',
               }}
               animate={{
@@ -68,7 +75,6 @@ export default function Avatar({ isSpeaking, isListening, isVisible }: AvatarPro
               }}
             />
 
-            {/* Listening ring */}
             <AnimatePresence>
               {isListening && (
                 <motion.div
@@ -86,10 +92,12 @@ export default function Avatar({ isSpeaking, isListening, isVisible }: AvatarPro
               )}
             </AnimatePresence>
 
-            {/* Avatar image container */}
             <motion.div
               className="relative avatar-float"
-              style={{ width: '260px', height: '380px' }}
+              style={{
+                width: 'clamp(240px, 30vw, 360px)',
+                height: 'clamp(340px, 46vw, 520px)',
+              }}
               animate={{
                 y: [0, -14, 0],
                 scale: isSpeaking ? [1, 1.012, 1] : [1, 1.006, 1],
@@ -99,26 +107,20 @@ export default function Avatar({ isSpeaking, isListening, isVisible }: AvatarPro
                 scale: { duration: isSpeaking ? 1.2 : 4, repeat: Infinity, ease: 'easeInOut' },
               }}
             >
-              {/* Use the Pixar-style avatar image */}
-              <div
-                className="relative w-full h-full avatar-glow"
-                style={{ position: 'relative' }}
-              >
+              <div className="relative h-full w-full avatar-glow">
                 <Image
                   src="/avatar/shalem.png"
                   alt="Shalem - AI Engineer"
                   fill
-                  style={{ objectFit: 'contain', objectPosition: 'center top' }}
+                  style={{ objectFit: 'contain', objectPosition: 'center center' }}
                   priority
                   unoptimized
                 />
               </div>
 
-              {/* Eye and mouth overlays */}
               <AvatarEyes isSpeaking={isSpeaking} />
               <AvatarMouth isSpeaking={isSpeaking} />
 
-              {/* Speaking particle burst */}
               <AnimatePresence>
                 {isSpeaking && (
                   <>
@@ -153,23 +155,24 @@ export default function Avatar({ isSpeaking, isListening, isVisible }: AvatarPro
               </AnimatePresence>
             </motion.div>
 
-            {/* Name plate */}
-            <motion.div
-              className="absolute -bottom-16 left-1/2 -translate-x-1/2 text-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 2, duration: 1 }}
-            >
-              <p
-                className="text-xs tracking-[0.35em] uppercase"
-                style={{
-                  color: 'rgba(147, 197, 253, 0.4)',
-                  fontFamily: 'var(--font-mono)',
-                }}
+            {showPlate && (
+              <motion.div
+                className="absolute -bottom-16 left-1/2 -translate-x-1/2 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 2, duration: 1 }}
               >
-                AI · Engineer · Developer
-              </p>
-            </motion.div>
+                <p
+                  className="text-xs tracking-[0.35em] uppercase"
+                  style={{
+                    color: 'rgba(147, 197, 253, 0.4)',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  AI | ENGINEER | DEVELOPER
+                </p>
+              </motion.div>
+            )}
           </motion.div>
         </ParallaxLayer>
       )}
