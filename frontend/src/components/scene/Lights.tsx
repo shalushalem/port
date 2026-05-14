@@ -1,44 +1,53 @@
 'use client'
 import { useMemo } from 'react'
 import { SCENE_COLORS } from '@/lib/constants'
+import { LightingProfile } from '@/cinematic/environment/LightingDirector'
 
 interface LightsProps {
   glowIntensity: number
   speechLevel: number
   activationLevel: number
+  profile: LightingProfile
 }
 
 export default function Lights({
   glowIntensity,
   speechLevel,
   activationLevel,
+  profile,
 }: LightsProps) {
-  const dynamic = 0.85 + speechLevel * 0.42 + activationLevel * 0.28
+  const dynamic =
+    profile.ambientFloor +
+    speechLevel * (0.32 + profile.speechBoost) +
+    (activationLevel + profile.activationBias) * 0.3
   const rimIntensity = useMemo(
-    () => (1.05 + glowIntensity * 0.94) * dynamic,
-    [dynamic, glowIntensity],
+    () => (1.05 + glowIntensity * 0.94 * profile.glowMultiplier) * dynamic,
+    [dynamic, glowIntensity, profile.glowMultiplier],
   )
   const keyIntensity = useMemo(
-    () => (1.52 + glowIntensity * 0.52) * dynamic,
-    [dynamic, glowIntensity],
+    () => (1.52 + glowIntensity * 0.52 * profile.glowMultiplier) * dynamic,
+    [dynamic, glowIntensity, profile.glowMultiplier],
   )
   const fillIntensity = useMemo(
-    () => (0.82 + glowIntensity * 0.42) * dynamic,
-    [dynamic, glowIntensity],
+    () => (0.82 + glowIntensity * 0.42 * profile.glowMultiplier) * dynamic,
+    [dynamic, glowIntensity, profile.glowMultiplier],
   )
 
   return (
     <>
-      <ambientLight intensity={0.46 + glowIntensity * 0.16 + activationLevel * 0.2} color="#93c5fd" />
+      <ambientLight
+        intensity={
+          0.42 +
+          glowIntensity * 0.14 * profile.glowMultiplier +
+          (activationLevel + profile.activationBias) * 0.18
+        }
+        color="#93c5fd"
+      />
 
       <directionalLight
-        castShadow
         position={[3.2, 5.2, 4.8]}
         intensity={keyIntensity}
         color="#f8fbff"
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-bias={-0.0002}
       />
 
       <directionalLight
@@ -56,7 +65,7 @@ export default function Lights({
 
       <pointLight
         position={[0, 2, 2.6]}
-        intensity={0.95 + glowIntensity * 0.7 + speechLevel * 0.45}
+        intensity={0.95 + glowIntensity * 0.7 + speechLevel * (0.22 + profile.speechBoost)}
         distance={8}
         color={SCENE_COLORS.softCyan}
       />
@@ -69,7 +78,13 @@ export default function Lights({
       />
 
       <hemisphereLight
-        args={['#a5f3fc', '#020617', 0.24 + glowIntensity * 0.1 + activationLevel * 0.1]}
+        args={[
+          '#a5f3fc',
+          '#020617',
+          0.24 +
+            glowIntensity * 0.1 * profile.glowMultiplier +
+            (activationLevel + profile.activationBias) * 0.1,
+        ]}
       />
     </>
   )

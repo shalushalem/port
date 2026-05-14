@@ -1,4 +1,4 @@
-import { getAIResponse } from '@/lib/ai'
+import { getAIResponse, streamAIResponse } from '@/lib/ai'
 import { AvatarTransitionEvent } from '@/systems/avatar/avatarStateMachine'
 import {
   INITIAL_VOICE_PIPELINE_STATE,
@@ -27,6 +27,14 @@ export interface VoiceManagerCallbacks {
 
 export interface VoiceManagerOptions extends VoiceManagerCallbacks {
   generateResponse?: (input: string) => Promise<string>
+  streamResponse?: (
+    input: string,
+    handlers: {
+      onDelta?: (delta: string, fullText: string) => void
+      onFinal?: (fullText: string) => void
+      onError?: (message: string) => void
+    },
+  ) => Promise<string>
 }
 
 export class VoiceManager {
@@ -35,12 +43,21 @@ export class VoiceManager {
   private speechPulseTimer: number | null = null
   private pipeline: VoicePipelineState = { ...INITIAL_VOICE_PIPELINE_STATE }
   private generateResponse: (input: string) => Promise<string>
+  private streamResponse: NonNullable<VoiceManagerOptions['streamResponse']>
   private callbacks: VoiceManagerCallbacks
   private disposed = false
 
   constructor(options: VoiceManagerOptions = {}) {
     this.callbacks = options
     this.generateResponse = options.generateResponse ?? ((input) => getAIResponse(input))
+    this.streamResponse =
+      options.streamResponse ??
+      ((input, handlers) =>
+        streamAIResponse(input, {
+          onDelta: handlers.onDelta,
+          onFinal: handlers.onFinal,
+          onError: handlers.onError,
+        }))
   }
 
   getPipelineState() {
@@ -149,12 +166,32 @@ export class VoiceManager {
       const normalized = await this.runFutureVadHook(text)
 
       this.updatePipeline({ stage: VoicePipelineStage.THINKING })
-      const response = await this.generateResponse(normalized)
+      let lastSubtitleUpdateMs = 0
+      let response = ''
+      try {
+        response = await this.streamResponse(normalized, {
+          onDelta: (_delta, fullText) => {
+            if (this.disposed) return
+            const now = Date.now()
+            if (now - lastSubtitleUpdateMs < 90) return
+            lastSubtitleUpdateMs = now
+            const framed = fullText.trim()
+            if (!framed) return
+            this.callbacks.onSubtitle?.(framed)
+            this.updatePipeline({ response: framed })
+          },
+        })
+      } catch {
+        response = await this.generateResponse(normalized)
+      }
+      const finalizedResponse =
+        response.trim() || 'I am here with you. Tell me what you want to explore next.'
+
       this.updatePipeline({
         stage: VoicePipelineStage.SYNTHESIZING,
-        response,
+        response: finalizedResponse,
       })
-      this.speak(response)
+      this.speak(finalizedResponse)
     } catch {
       this.emitError("I hit a processing issue. Let's try that again.")
     }

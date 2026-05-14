@@ -38,4 +38,4 @@ export const CAMERA_DEFAULT = {
   fov: 33,
 }
 
-export const PARTICLE_COUNT = 170
+export const PARTICLE_COUNT = 82

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#07214a"/>
+      <stop offset="100%" stop-color="#0b1630"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#sky)"/>
+  <rect y="288" width="640" height="112" fill="#09162d"/>
+  <rect x="56" y="220" width="40" height="68" fill="#102b51"/>
+  <rect x="112" y="196" width="52" height="92" fill="#12335d"/>
+  <rect x="184" y="164" width="42" height="124" fill="#153968"/>
+  <rect x="244" y="182" width="66" height="106" fill="#184274"/>
+  <rect x="334" y="146" width="58" height="142" fill="#1b4a7f"/>
+  <rect x="412" y="172" width="44" height="116" fill="#184170"/>
+  <rect x="472" y="192" width="78" height="96" fill="#143660"/>
+  <rect x="568" y="206" width="30" height="82" fill="#102d54"/>
+  <circle cx="514" cy="84" r="32" fill="#5dafff"/>
+  <text x="44" y="54" fill="#bfe1ff" font-family="monospace" font-size="24">Future skyline / limitless possibilities</text>
+</svg>
+

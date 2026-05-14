@@ -42,7 +42,8 @@ export function createSpeechRecognizer(handlers: RecognitionHandlers) {
   const recognition = new RecognitionCtor()
   recognition.continuous = false
   recognition.interimResults = true
-  recognition.lang = 'en-US'
+  // Better baseline for mixed Telugu/English and Indian-accent English.
+  recognition.lang = 'en-IN'
 
   recognition.onstart = () => {
     handlers.onStart?.()

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#081227"/>
+      <stop offset="100%" stop-color="#1a3558"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#bg)"/>
+  <rect x="76" y="64" width="488" height="272" rx="24" fill="#0c203b" stroke="#458fdb" stroke-width="2"/>
+  <circle cx="214" cy="182" r="70" fill="#173e67"/>
+  <rect x="308" y="124" width="210" height="20" rx="10" fill="#72bdfd"/>
+  <rect x="308" y="160" width="170" height="14" rx="7" fill="#4f95dd"/>
+  <rect x="308" y="188" width="196" height="14" rx="7" fill="#3f7dc3"/>
+  <rect x="308" y="216" width="156" height="14" rx="7" fill="#5ea7ee"/>
+  <text x="126" y="200" fill="#c6e7ff" font-family="monospace" font-size="18">Life</text>
+  <text x="308" y="284" fill="#bfe1ff" font-family="monospace" font-size="14">Coding, creating, building every day</text>
+</svg>
+

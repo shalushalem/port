@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: int = 90
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
-    use_mock_ai: bool = True
+    use_mock_ai: bool = False
     enable_openai_transcribe: bool = False
     frontend_origin: str = "http://localhost:3000"
     sqlite_path: str = "./storage/portfolio.db"

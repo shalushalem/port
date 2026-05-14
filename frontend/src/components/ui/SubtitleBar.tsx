@@ -6,6 +6,8 @@ interface SubtitleBarProps {
   text: string
   isActive: boolean
   isSpeaking: boolean
+  speechLevel?: number
+  layout?: 'center' | 'splitLeft'
   className?: string
 }
 
@@ -13,6 +15,8 @@ export default function SubtitleBar({
   text,
   isActive,
   isSpeaking,
+  speechLevel = 0,
+  layout = 'center',
   className = '',
 }: SubtitleBarProps) {
   const [displayText, setDisplayText] = useState('')
@@ -30,7 +34,7 @@ export default function SubtitleBar({
     setCharIndex(0)
 
     let i = 0
-    const speed = 24
+    const speed = 14
 
     const type = () => {
       if (i <= text.length) {
@@ -41,7 +45,7 @@ export default function SubtitleBar({
       }
     }
 
-    timerRef.current = setTimeout(type, 80)
+    timerRef.current = setTimeout(type, 0)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
@@ -49,46 +53,58 @@ export default function SubtitleBar({
 
   if (!text && !isActive) return null
 
+  const layoutClassName =
+    layout === 'splitLeft'
+      ? 'left-[6vw] w-[88vw] max-w-[560px] translate-x-0 px-0 md:w-[min(560px,40vw)]'
+      : 'left-1/2 w-full max-w-[760px] -translate-x-1/2 px-5'
+
   return (
     <motion.div
-      className={`fixed left-1/2 z-40 w-full max-w-[760px] -translate-x-1/2 px-5 ${className}`}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.7 }}
+      className={`fixed z-40 ${layoutClassName} ${className}`}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{
+        opacity: 1,
+        y: layout === 'splitLeft' ? [0, -4, 0] : 0,
+        x: layout === 'splitLeft' ? [0, 4, 0] : 0,
+      }}
+      transition={{
+        opacity: { duration: 0.7 },
+        x: { duration: 5.6, repeat: Infinity, ease: 'easeInOut' },
+        y: { duration: 5, repeat: Infinity, ease: 'easeInOut' },
+      }}
     >
       <AnimatePresence mode="wait">
         {text && (
           <motion.div
             key={text.slice(0, 24)}
-            className="glass rounded-2xl px-5 py-4 relative overflow-hidden"
-            style={{ boxShadow: '0 12px 44px rgba(2, 6, 23, 0.5)' }}
+            className="relative overflow-visible px-1 py-1"
             initial={{ opacity: 0, y: 10, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: isSpeaking ? 1 + speechLevel * 0.016 : 0.995,
+            }}
             exit={{ opacity: 0, y: -8, scale: 0.985 }}
             transition={{ duration: 0.45 }}
           >
-            <div
-              className="absolute top-0 left-0 right-0 h-px"
+            <motion.div
+              className="mb-2 h-[6px] w-[92px] rounded-full"
               style={{
-                background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.52), transparent)',
+                background:
+                  'linear-gradient(90deg, rgba(34,211,238,0.42), rgba(34,211,238,0.08))',
+                boxShadow: '0 0 12px rgba(34, 211, 238, 0.22)',
               }}
+              animate={{
+                opacity: isSpeaking ? [0.36, 0.9, 0.42] : [0.2, 0.45, 0.22],
+                scaleX: isSpeaking ? [0.7, 1.05, 0.75] : [0.52, 0.7, 0.56],
+              }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
             />
 
-            <div className="mb-2 flex items-center gap-2">
-              <motion.span
-                className="status-dot rounded-full"
-                style={{
-                  width: 6,
-                  height: 6,
-                  background: isSpeaking ? '#22d3ee' : 'rgba(125, 211, 252, 0.45)',
-                }}
-              />
-              <span className="text-[10px] uppercase tracking-[0.24em] text-blue-200/45">
-                Shalem // AI Channel
-              </span>
-            </div>
-
-            <p className="text-sm leading-relaxed text-slate-100/90 md:text-base">
+            <p
+              className="text-base leading-relaxed text-slate-100/95 md:text-[1.1rem]"
+              style={{ textShadow: '0 0 18px rgba(34, 211, 238, 0.34)' }}
+            >
               {displayText}
               {charIndex < text.length && (
                 <span
@@ -104,13 +120,14 @@ export default function SubtitleBar({
             </p>
 
             <motion.div
-              className="pointer-events-none absolute inset-0 rounded-2xl"
+              className="pointer-events-none absolute -left-2 -right-2 top-[55%] -z-10 h-px"
               style={{
-                background: 'linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.04) 50%, transparent 100%)',
-                backgroundSize: '200% 100%',
+                background:
+                  'linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.44) 50%, transparent 100%)',
+                boxShadow: '0 0 20px rgba(34, 211, 238, 0.3)',
               }}
-              animate={{ backgroundPosition: ['200% center', '-200% center'] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+              animate={{ opacity: [0.18, 0.52, 0.22], scaleX: [0.55, 1, 0.62] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
             />
           </motion.div>
         )}

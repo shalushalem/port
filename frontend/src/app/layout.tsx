@@ -1,9 +1,10 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Shalem | AI Digital Consciousness',
   description: 'AI engineer and full stack developer from Vijayawada, India. A cinematic digital consciousness experience with voice interaction.',
+  manifest: '/manifest.webmanifest',
   keywords: [
     'AI Engineer', 'Full Stack Developer', 'Freelancer India',
     'React Developer', 'Next.js Developer', 'Machine Learning',
@@ -21,6 +22,15 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#050816',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -31,6 +41,10 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Shalem" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

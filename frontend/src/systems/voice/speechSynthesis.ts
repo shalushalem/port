@@ -5,14 +5,58 @@ export interface SynthesisHandlers {
   onError?: (message: string) => void
 }
 
+let activeUtterance: SpeechSynthesisUtterance | null = null
+
+const MALE_HINTS = [
+  'male',
+  'guy',
+  'davis',
+  'david',
+  'mark',
+  'george',
+  'james',
+  'thomas',
+  'daniel',
+  'lee',
+]
+
+const FEMALE_HINTS = [
+  'female',
+  'zira',
+  'hazel',
+  'susan',
+  'sara',
+  'aria',
+  'katya',
+  'jenny',
+  'emma',
+  'linda',
+]
+
+function includesAny(source: string, hints: string[]) {
+  const normalized = source.toLowerCase()
+  return hints.some((hint) => normalized.includes(hint))
+}
+
+function scoreVoice(voice: SpeechSynthesisVoice) {
+  let score = 0
+  const identity = `${voice.name} ${voice.lang}`.toLowerCase()
+  if (voice.lang.toLowerCase().startsWith('en')) score += 4
+  if (identity.includes('google')) score += 1.5
+  if (identity.includes('microsoft')) score += 1.5
+  if (includesAny(identity, MALE_HINTS)) score += 7
+  if (includesAny(identity, FEMALE_HINTS)) score -= 8
+  return score
+}
+
 function pickBestVoice(voices: SpeechSynthesisVoice[]) {
-  return voices.find((voice) =>
-    voice.name.includes('Google UK English Male') ||
-    voice.name.includes('Microsoft Guy') ||
-    voice.name.includes('Premium') ||
-    voice.name.includes('Enhanced') ||
-    voice.lang === 'en-GB'
-  ) ?? null
+  if (voices.length === 0) return null
+
+  const sorted = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a))
+  const nonFemale = sorted.filter(
+    (voice) => !includesAny(`${voice.name} ${voice.lang}`, FEMALE_HINTS),
+  )
+  return nonFemale[0] ?? sorted[0] ?? null
 }
 
 export function isSpeechSynthesisSupported() {
@@ -31,26 +75,34 @@ export function speakWithSynthesis(
   if (!isSpeechSynthesisSupported()) return null
 
   const synth = window.speechSynthesis
+  // Chrome occasionally gets stuck after heavy render frames.
+  synth.cancel()
+  synth.resume()
   synth.cancel()
 
   const utterance = new SpeechSynthesisUtterance(text)
-  utterance.rate = 0.9
+  utterance.rate = 1.02
   utterance.pitch = 1
   utterance.volume = 1
 
-  const voices = synth.getVoices()
-  const best = pickBestVoice(voices)
-  if (best) utterance.voice = best
+  const assignBestVoice = () => {
+    const best = pickBestVoice(synth.getVoices())
+    if (best) utterance.voice = best
+  }
+  assignBestVoice()
 
   utterance.onstart = () => {
+    activeUtterance = utterance
     handlers.onStart?.()
   }
 
   utterance.onend = () => {
+    activeUtterance = null
     handlers.onEnd?.()
   }
 
   utterance.onerror = (event: any) => {
+    activeUtterance = null
     handlers.onError?.(event?.error ?? 'speech_synthesis_error')
   }
 
@@ -60,6 +112,9 @@ export function speakWithSynthesis(
     handlers.onWordBoundary?.(word, event.charIndex)
   }
 
-  synth.speak(utterance)
+  window.setTimeout(() => {
+    assignBestVoice()
+    synth.speak(utterance)
+  }, 60)
   return utterance
 }

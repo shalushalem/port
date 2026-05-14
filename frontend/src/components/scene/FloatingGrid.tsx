@@ -11,7 +11,7 @@ interface FloatingGridProps {
 function buildGridPositions() {
   const positions: number[] = []
   const halfSize = 6
-  const divisions = 18
+  const divisions = 14
   const step = (halfSize * 2) / divisions
 
   for (let i = -divisions / 2; i <= divisions / 2; i++) {

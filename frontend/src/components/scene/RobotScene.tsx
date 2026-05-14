@@ -1,9 +1,19 @@
 'use client'
-import { Suspense, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { AdaptiveDpr, ContactShadows, Preload } from '@react-three/drei'
-import { MathUtils, Vector3 } from 'three'
-import { AvatarState, CAMERA_DEFAULT, SCENE_COLORS } from '@/lib/constants'
+import { AdaptiveDpr } from '@react-three/drei'
+import { PerspectiveCamera } from 'three'
+import { AvatarState } from '@/lib/constants'
+import { CameraController } from '@/cinematic/camera/CameraController'
+import { resolveCameraPreset } from '@/cinematic/camera/CameraPresets'
+import { resolveAtmosphereProfile } from '@/cinematic/environment/AtmosphereController'
+import { resolveLightingProfile } from '@/cinematic/environment/LightingDirector'
+import { resolveParticleProfile } from '@/cinematic/environment/ParticleManager'
+import {
+  AtmosphereProfileId,
+  CameraPresetId,
+  LightingProfileId,
+} from '@/cinematic/types'
 import Lights from '@/components/scene/Lights'
 import RobotModel from '@/components/scene/RobotModel'
 import BackgroundParticles from '@/components/scene/BackgroundParticles'
@@ -16,42 +26,37 @@ interface RobotSceneProps {
   isSpeaking: boolean
   speechLevel: number
   activationLevel: number
+  cameraPresetId: CameraPresetId
+  lightingProfileId: LightingProfileId
+  atmosphereProfileId: AtmosphereProfileId
 }
 
 function CameraRig({
-  state,
-  speechLevel,
+  cameraPresetId,
 }: {
-  state: AvatarState
-  speechLevel: number
+  cameraPresetId: CameraPresetId
 }) {
-  const lookAtTarget = useRef(new Vector3(...CAMERA_DEFAULT.target))
+  const controllerRef = useRef<CameraController | null>(null)
+
+  useEffect(() => {
+    controllerRef.current = new CameraController(cameraPresetId)
+    return () => {
+      controllerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    controllerRef.current?.setPresetById(cameraPresetId)
+  }, [cameraPresetId])
 
   useFrame(({ camera, clock, pointer }, delta) => {
-    const t = clock.getElapsedTime()
-    const talkWeight = state === AvatarState.TALKING ? 1 : 0
-    const listenWeight = state === AvatarState.LISTENING ? 1 : 0
-    const boost = 0.055 + talkWeight * 0.04 + listenWeight * 0.02
-
-    const targetX = Math.sin(t * 0.18) * 0.05 + pointer.x * boost
-    const targetY = CAMERA_DEFAULT.position[1] + Math.sin(t * 0.22) * 0.025 + pointer.y * 0.04
-    const zoomBias = talkWeight * -0.16 + speechLevel * -0.1
-    const targetZ = CAMERA_DEFAULT.position[2] + Math.sin(t * 0.15) * 0.05 + zoomBias
-
-    camera.position.x = MathUtils.damp(camera.position.x, targetX, 1.45, delta)
-    camera.position.y = MathUtils.damp(camera.position.y, targetY, 1.45, delta)
-    camera.position.z = MathUtils.damp(camera.position.z, targetZ, 1.45, delta)
-
-    lookAtTarget.current.x = MathUtils.damp(lookAtTarget.current.x, pointer.x * 0.12, 2.2, delta)
-    lookAtTarget.current.y = MathUtils.damp(
-      lookAtTarget.current.y,
-      CAMERA_DEFAULT.target[1] + pointer.y * 0.05 + speechLevel * 0.03,
-      2.2,
+    if (!controllerRef.current) return
+    controllerRef.current.update(
+      camera as PerspectiveCamera,
       delta,
+      clock.getElapsedTime(),
+      pointer,
     )
-    lookAtTarget.current.z = 0
-
-    camera.lookAt(lookAtTarget.current)
   })
 
   return null
@@ -63,14 +68,37 @@ export default function RobotScene({
   isSpeaking,
   speechLevel,
   activationLevel,
+  cameraPresetId,
+  lightingProfileId,
+  atmosphereProfileId,
 }: RobotSceneProps) {
+  const initialCameraPreset = useMemo(
+    () => resolveCameraPreset(cameraPresetId),
+    [cameraPresetId],
+  )
+  const lightingProfile = useMemo(
+    () => resolveLightingProfile(lightingProfileId),
+    [lightingProfileId],
+  )
+  const atmosphereProfile = useMemo(
+    () => resolveAtmosphereProfile(atmosphereProfileId),
+    [atmosphereProfileId],
+  )
+  const particleProfile = useMemo(
+    () => resolveParticleProfile(atmosphereProfileId),
+    [atmosphereProfileId],
+  )
+  const profiledGlow = glowIntensity * particleProfile.glowMultiplier
+  const profiledSpeech =
+    speechLevel * particleProfile.speechMultiplier + particleProfile.ambientPulse
+
   return (
     <div className="absolute inset-0">
       <Canvas
-        shadows
-        dpr={[1, 1.6]}
+        shadows={false}
+        dpr={[1, 1.2]}
         gl={{
-          antialias: true,
+          antialias: false,
           alpha: true,
           powerPreference: 'high-performance',
         }}
@@ -79,44 +107,39 @@ export default function RobotScene({
           gl.setClearAlpha(0)
         }}
         camera={{
-          position: CAMERA_DEFAULT.position,
-          fov: CAMERA_DEFAULT.fov,
+          position: initialCameraPreset.position,
+          fov: initialCameraPreset.fov,
           near: 0.1,
           far: 40,
         }}
       >
         <Suspense fallback={null}>
-          <fog attach="fog" args={[SCENE_COLORS.base, 6.8, 20]} />
+          <fog
+            attach="fog"
+            args={[
+              atmosphereProfile.fogColor,
+              atmosphereProfile.fogNear,
+              atmosphereProfile.fogFar,
+            ]}
+          />
 
           <AdaptiveDpr pixelated />
-          <CameraRig state={state} speechLevel={speechLevel} />
+          <CameraRig cameraPresetId={cameraPresetId} />
           <Lights
-            glowIntensity={glowIntensity}
-            speechLevel={speechLevel}
+            glowIntensity={profiledGlow}
+            speechLevel={profiledSpeech}
             activationLevel={activationLevel}
+            profile={lightingProfile}
           />
-          <BackgroundParticles glowIntensity={glowIntensity} speechLevel={speechLevel} />
-          <FloatingGrid glowIntensity={glowIntensity} speechLevel={speechLevel} />
-          <FloorGlow glowIntensity={glowIntensity} speechLevel={speechLevel} />
+          <BackgroundParticles glowIntensity={profiledGlow} speechLevel={profiledSpeech} />
+          <FloatingGrid glowIntensity={profiledGlow} speechLevel={profiledSpeech} />
+          <FloorGlow glowIntensity={profiledGlow} speechLevel={profiledSpeech} />
           <RobotModel
             state={state}
-            glowIntensity={glowIntensity}
+            glowIntensity={profiledGlow}
             isSpeaking={isSpeaking}
-            speechLevel={speechLevel}
+            speechLevel={profiledSpeech}
           />
-
-          <ContactShadows
-            position={[0, -2.1, 0]}
-            opacity={0.24}
-            scale={6.2}
-            blur={2.35}
-            far={4.6}
-            resolution={512}
-            color="#061225"
-            frames={1}
-          />
-
-          <Preload all />
         </Suspense>
       </Canvas>
     </div>

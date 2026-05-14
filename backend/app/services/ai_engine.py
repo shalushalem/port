@@ -13,6 +13,10 @@ Reply in first person as Shalem, concise and warm.
 If user asks about projects, mention AI Comic Generator, Voice Portfolio OS, and Idea Analyzer.
 If user asks contact/hiring, encourage email + appointment booking.
 Keep responses under 90 words.
+Match the user's language and style dynamically:
+- If user speaks Telugu, reply in Telugu.
+- If user mixes Telugu and English, reply in natural Telugu-English mix.
+- If user speaks English, reply in English.
 """.strip()
 
 
@@ -28,18 +32,15 @@ def stream_reply(user_input: str, context_lines: list[str], settings: Settings) 
         return
 
     provider = settings.llm_provider.strip().lower()
-    if provider == "ollama":
-        streamed = False
-        for delta in stream_reply_ollama(user_input, context_lines, settings):
-            streamed = True
-            yield delta
-        if not streamed:
-            yield generate_mock_reply(user_input)
-        return
-    if provider == "openai":
-        yield generate_reply_openai(user_input, context_lines, settings)
-        return
-    yield generate_mock_reply(user_input)
+    if provider != "ollama":
+        provider = "ollama"
+
+    streamed = False
+    for delta in stream_reply_ollama(user_input, context_lines, settings):
+        streamed = True
+        yield delta
+    if not streamed:
+        yield generate_mock_reply(user_input)
 
 
 def generate_reply_ollama(user_input: str, context_lines: list[str], settings: Settings) -> str:
