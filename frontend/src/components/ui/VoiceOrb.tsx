@@ -9,9 +9,9 @@ interface VoiceOrbProps {
 }
 
 export default function VoiceOrb({ state, onToggle }: VoiceOrbProps) {
-  const isListening = state === 'listening'
-  const isTalking = state === 'talking'
-  const isThinking = state === 'thinking'
+  const isListening = state === AvatarState.LISTENING
+  const isTalking = state === AvatarState.TALKING
+  const isThinking = state === AvatarState.THINKING
   const active = isListening || isTalking || isThinking
 
   return (

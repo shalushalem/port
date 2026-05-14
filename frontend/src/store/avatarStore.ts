@@ -4,6 +4,10 @@ import {
   AvatarState,
   INITIAL_SUBTITLE,
 } from '@/lib/constants'
+import {
+  AvatarTransitionEvent,
+  transitionAvatarState,
+} from '@/systems/avatar/avatarStateMachine'
 
 interface AvatarStore {
   state: AvatarState
@@ -17,6 +21,7 @@ interface AvatarStore {
   activeClip: string | null
 
   setState: (next: AvatarState) => void
+  transitionState: (event: AvatarTransitionEvent) => void
   setSubtitle: (text: string) => void
   setCommandInput: (text: string) => void
   setTyping: (typing: boolean) => void
@@ -28,8 +33,8 @@ interface AvatarStore {
 }
 
 export const useAvatarStore = create<AvatarStore>((set) => ({
-  state: 'idle',
-  glowIntensity: AVATAR_GLOW_BY_STATE.idle,
+  state: AvatarState.IDLE,
+  glowIntensity: AVATAR_GLOW_BY_STATE[AvatarState.IDLE],
   subtitle: INITIAL_SUBTITLE,
   commandInput: '',
   isTyping: false,
@@ -44,6 +49,15 @@ export const useAvatarStore = create<AvatarStore>((set) => ({
       glowIntensity: AVATAR_GLOW_BY_STATE[next],
     }),
 
+  transitionState: (event) =>
+    set((current) => {
+      const next = transitionAvatarState(current.state, event)
+      return {
+        state: next,
+        glowIntensity: AVATAR_GLOW_BY_STATE[next],
+      }
+    }),
+
   setSubtitle: (text) => set({ subtitle: text }),
   setCommandInput: (text) => set({ commandInput: text }),
   setTyping: (typing) => set({ isTyping: typing }),
@@ -54,8 +68,8 @@ export const useAvatarStore = create<AvatarStore>((set) => ({
 
   resetToIdle: () =>
     set({
-      state: 'idle',
-      glowIntensity: AVATAR_GLOW_BY_STATE.idle,
+      state: AvatarState.IDLE,
+      glowIntensity: AVATAR_GLOW_BY_STATE[AvatarState.IDLE],
       isListening: false,
       isSpeaking: false,
       speechLevel: 0,

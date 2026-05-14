@@ -6,9 +6,13 @@ import { PARTICLE_COUNT } from '@/lib/constants'
 
 interface BackgroundParticlesProps {
   glowIntensity: number
+  speechLevel: number
 }
 
-export default function BackgroundParticles({ glowIntensity }: BackgroundParticlesProps) {
+export default function BackgroundParticles({
+  glowIntensity,
+  speechLevel,
+}: BackgroundParticlesProps) {
   const pointsRef = useRef<Points>(null)
 
   const positions = useMemo(() => {
@@ -27,16 +31,16 @@ export default function BackgroundParticles({ glowIntensity }: BackgroundParticl
   useFrame(({ clock }, delta) => {
     if (!pointsRef.current) return
     const t = clock.getElapsedTime()
-    pointsRef.current.rotation.y = t * 0.028
+    pointsRef.current.rotation.y = t * 0.02 + speechLevel * 0.015
     pointsRef.current.position.y = MathUtils.damp(
       pointsRef.current.position.y,
-      Math.sin(t * 0.35) * 0.08,
+      Math.sin(t * 0.28) * 0.06 + speechLevel * 0.04,
       2.2,
       delta,
     )
     pointsRef.current.rotation.x = MathUtils.damp(
       pointsRef.current.rotation.x,
-      Math.sin(t * 0.15) * 0.06,
+      Math.sin(t * 0.12) * 0.04,
       2.8,
       delta,
     )
@@ -49,10 +53,10 @@ export default function BackgroundParticles({ glowIntensity }: BackgroundParticl
       </bufferGeometry>
       <pointsMaterial
         color="#6ee7ff"
-        size={0.016 + glowIntensity * 0.004}
+        size={0.014 + glowIntensity * 0.003 + speechLevel * 0.002}
         sizeAttenuation
         transparent
-        opacity={0.1 + glowIntensity * 0.08}
+        opacity={0.08 + glowIntensity * 0.06 + speechLevel * 0.05}
         depthWrite={false}
         blending={AdditiveBlending}
       />

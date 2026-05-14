@@ -5,13 +5,15 @@ import {
   LoopRepeat,
   Object3D,
 } from 'three'
-import type { AvatarState } from '@/lib/constants'
+import { AvatarState } from '@/lib/constants'
 
 const CLIP_HINTS: Record<AvatarState, RegExp[]> = {
-  idle: [/idle/i, /breath/i, /default/i, /stand/i],
-  listening: [/listen/i, /scan/i, /aware/i, /focus/i],
-  thinking: [/think/i, /ponder/i, /analy/i, /inspect/i],
-  talking: [/talk/i, /speak/i, /answer/i, /chat/i, /mouth/i],
+  [AvatarState.IDLE]: [/idle/i, /breath/i, /default/i, /stand/i],
+  [AvatarState.LISTENING]: [/listen/i, /scan/i, /aware/i, /focus/i],
+  [AvatarState.THINKING]: [/think/i, /ponder/i, /analy/i, /inspect/i],
+  [AvatarState.TALKING]: [/talk/i, /speak/i, /answer/i, /chat/i, /mouth/i],
+  [AvatarState.ERROR]: [/idle/i, /stand/i, /default/i],
+  [AvatarState.SLEEPING]: [/idle/i, /stand/i, /default/i],
 }
 
 const LOCOMOTION_OR_DANCE = /(walk|run|jog|sprint|hiphop|salsa|fight|rap)/i
@@ -67,7 +69,7 @@ export class AnimationController {
   }
 
   getIdleClipName() {
-    return this.findBestClipByState('idle') ?? this.findCalmFallbackClip()
+    return this.findBestClipByState(AvatarState.IDLE) ?? this.findCalmFallbackClip()
   }
 
   findBestClipByState(state: AvatarState): string | null {
@@ -75,7 +77,7 @@ export class AnimationController {
     for (const hint of hints) {
       const found = this.clipNames.find((name) => {
         if (!hint.test(name)) return false
-        if (state !== 'talking' && this.isLocomotionLike(name)) return false
+        if (state !== AvatarState.TALKING && this.isLocomotionLike(name)) return false
         return true
       })
       if (found) return found

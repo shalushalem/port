@@ -6,11 +6,12 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Group, MathUtils, Mesh, Object3D } from 'three'
 import { AnimationController } from '@/lib/animationController'
 import { AvatarState, ROBOT_MODEL_PATH } from '@/lib/constants'
-import { useAvatarStore } from '@/store/avatarStore'
 
 interface RobotModelProps {
   state: AvatarState
   glowIntensity: number
+  isSpeaking: boolean
+  speechLevel: number
 }
 
 interface EmissiveMaterial {
@@ -19,12 +20,17 @@ interface EmissiveMaterial {
 
 const MODEL_BASE_TRANSFORM = {
   x: 0,
-  y: -1.98,
-  z: -3.05,
+  y: -2.04,
+  z: -2.92,
   yaw: 0.06,
 }
 
-export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
+export default function RobotModel({
+  state,
+  glowIntensity,
+  isSpeaking,
+  speechLevel,
+}: RobotModelProps) {
   const gltf = useGLTF(ROBOT_MODEL_PATH)
   const clonedScene = useMemo(
     () => SkeletonUtils.clone(gltf.scene) as Group,
@@ -38,9 +44,6 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
   const jawNodeRef = useRef<Object3D | null>(null)
   const eyeNodesRef = useRef<Array<{ node: Object3D; baseScaleY: number }>>([])
   const emissiveMaterialsRef = useRef<Array<{ mat: EmissiveMaterial; base: number }>>([])
-  const setActiveClip = useAvatarStore((store) => store.setActiveClip)
-  const speechLevel = useAvatarStore((store) => store.speechLevel)
-  const isSpeaking = useAvatarStore((store) => store.isSpeaking)
 
   const baseHeadRotation = useRef({ x: 0, y: 0 })
   const baseTorsoRotation = useRef({ x: 0, y: 0 })
@@ -54,7 +57,6 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
 
   const playProceduralIdle = () => {
     controllerRef.current?.stopAll()
-    setActiveClip('ProceduralIdle')
   }
 
   useEffect(() => {
@@ -124,15 +126,13 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
     const controller = new AnimationController(clonedScene, gltf.animations)
     controllerRef.current = controller
 
-    const strictIdle = controller.findBestClipByState('idle')
+    const strictIdle = controller.findBestClipByState(AvatarState.IDLE)
     if (strictIdle) {
       controller.play(strictIdle, { fadeDuration: 0.55, timeScale: 0.72 })
-      setActiveClip(strictIdle)
     } else {
       const calmFallback = controller.findCalmFallbackClip()
       if (calmFallback) {
         controller.play(calmFallback, { fadeDuration: 0.55, timeScale: 0.42 })
-        setActiveClip(`${calmFallback} (calm)`)
       } else {
         playProceduralIdle()
       }
@@ -142,41 +142,40 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
       controller.dispose()
       controllerRef.current = null
     }
-  }, [clonedScene, gltf.animations, setActiveClip])
+  }, [clonedScene, gltf.animations])
 
   useEffect(() => {
     const controller = controllerRef.current
     if (!controller) return
 
-    if (state === 'talking') {
-      const talkClip = controller.findBestClipByState('talking')
+    if (state === AvatarState.TALKING) {
+      const talkClip = controller.findBestClipByState(AvatarState.TALKING)
       if (talkClip) {
         controller.play(talkClip, { fadeDuration: 0.3, timeScale: 1 })
-        setActiveClip(talkClip)
       }
       return
     }
 
     const relaxedClip =
       controller.findBestClipByState(state) ??
-      controller.findBestClipByState('idle') ??
+      controller.findBestClipByState(AvatarState.IDLE) ??
       controller.findCalmFallbackClip()
 
     if (relaxedClip) {
       controller.play(relaxedClip, {
         fadeDuration: 0.5,
-        timeScale: state === 'listening' ? 0.55 : state === 'thinking' ? 0.48 : 0.4,
+        timeScale:
+          state === AvatarState.LISTENING
+            ? 0.55
+            : state === AvatarState.THINKING
+              ? 0.48
+              : 0.4,
       })
-      setActiveClip(
-        relaxedClip.includes('(calm)') || state === 'idle'
-          ? relaxedClip
-          : `${relaxedClip} (calm)`,
-      )
       return
     }
 
     playProceduralIdle()
-  }, [state, setActiveClip])
+  }, [state])
 
   useFrame(({ clock, pointer }, delta) => {
     const controller = controllerRef.current
@@ -279,7 +278,7 @@ export default function RobotModel({ state, glowIntensity }: RobotModelProps) {
       ref={groupRef}
       position={[MODEL_BASE_TRANSFORM.x, MODEL_BASE_TRANSFORM.y, MODEL_BASE_TRANSFORM.z]}
       rotation={[0, MODEL_BASE_TRANSFORM.yaw, 0]}
-      scale={0.9}
+      scale={0.96}
     >
       <primitive object={clonedScene} />
     </group>

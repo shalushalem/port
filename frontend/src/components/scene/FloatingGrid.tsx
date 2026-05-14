@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 
 interface FloatingGridProps {
   glowIntensity: number
+  speechLevel: number
 }
 
 function buildGridPositions() {
@@ -25,7 +26,10 @@ function buildGridPositions() {
   return new Float32Array(positions)
 }
 
-export default function FloatingGrid({ glowIntensity }: FloatingGridProps) {
+export default function FloatingGrid({
+  glowIntensity,
+  speechLevel,
+}: FloatingGridProps) {
   const gridRef = useRef<LineSegments>(null)
 
   const positions = useMemo(() => buildGridPositions(), [])
@@ -36,13 +40,13 @@ export default function FloatingGrid({ glowIntensity }: FloatingGridProps) {
     const t = clock.getElapsedTime()
     gridRef.current.rotation.y = MathUtils.damp(
       gridRef.current.rotation.y,
-      Math.sin(t * 0.12) * 0.02,
+      Math.sin(t * 0.1) * 0.018 + speechLevel * 0.016,
       2.2,
       delta,
     )
     gridRef.current.position.y = MathUtils.damp(
       gridRef.current.position.y,
-      -2.08 + Math.sin(t * 0.55) * 0.02,
+      -2.08 + Math.sin(t * 0.42) * 0.015 + speechLevel * 0.02,
       4,
       delta,
     )
@@ -56,7 +60,7 @@ export default function FloatingGrid({ glowIntensity }: FloatingGridProps) {
       <lineBasicMaterial
         color="#38bdf8"
         transparent
-        opacity={0.035 + glowIntensity * 0.045}
+        opacity={0.028 + glowIntensity * 0.032 + speechLevel * 0.02}
       />
     </lineSegments>
   )

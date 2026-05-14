@@ -1,7 +1,7 @@
 'use client'
 import { FormEvent } from 'react'
 import { Loader2, Send, Terminal } from 'lucide-react'
-import type { AvatarState } from '@/lib/constants'
+import { AvatarState } from '@/lib/constants'
 import VoiceOrb from '@/components/ui/VoiceOrb'
 
 interface ControlPanelProps {
@@ -59,11 +59,11 @@ export default function ControlPanel({
 
         <div className="mt-2 flex items-center justify-between px-1">
           <p className="text-[10px] uppercase tracking-[0.22em] text-blue-100/40">
-            {state === 'thinking'
+            {state === AvatarState.THINKING
               ? 'Processing command'
-              : state === 'talking'
+              : state === AvatarState.TALKING
                 ? 'Response stream active'
-                : state === 'listening'
+                : state === AvatarState.LISTENING
                   ? 'Voice capture active'
                   : 'System idle'}
           </p>

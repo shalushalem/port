@@ -1,198 +1,57 @@
 'use client'
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import RobotScene from '@/components/scene/RobotScene'
-import { getAIResponse } from '@/lib/ai'
-import { speakText, stopSpeech } from '@/lib/speech'
 import { useAvatarStore } from '@/store/avatarStore'
-
-type BrowserSpeechRecognition = {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  onstart: (() => void) | null
-  onresult: ((event: any) => void) | null
-  onend: (() => void) | null
-  onerror: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-type BrowserSpeechRecognitionCtor = new () => BrowserSpeechRecognition
-
-declare global {
-  interface Window {
-    webkitSpeechRecognition?: BrowserSpeechRecognitionCtor
-    SpeechRecognition?: BrowserSpeechRecognitionCtor
-  }
-}
+import { useVoice } from '@/systems/voice/useVoice'
+import { VoicePipelineStage } from '@/systems/voice/audioState'
+import MicOrbButton from '@/components/ui/MicOrbButton'
+import DynamicContentLayer from '@/components/chamber/DynamicContentLayer'
 
 export default function HomePage() {
   const state = useAvatarStore((store) => store.state)
   const glowIntensity = useAvatarStore((store) => store.glowIntensity)
-  const setState = useAvatarStore((store) => store.setState)
-  const setSubtitle = useAvatarStore((store) => store.setSubtitle)
-  const setListening = useAvatarStore((store) => store.setListening)
-  const setSpeaking = useAvatarStore((store) => store.setSpeaking)
-  const setSpeechLevel = useAvatarStore((store) => store.setSpeechLevel)
-  const resetToIdle = useAvatarStore((store) => store.resetToIdle)
+  const isSpeaking = useAvatarStore((store) => store.isSpeaking)
+  const speechLevel = useAvatarStore((store) => store.speechLevel)
+  const [hasAwakened, setHasAwakened] = useState(false)
+  const [activationPulse, setActivationPulse] = useState(0)
 
-  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null)
-  const transcriptRef = useRef('')
-  const speechPulseTimerRef = useRef<number | null>(null)
-  const introPlayedRef = useRef(false)
+  const { pipeline, toggleListening } = useVoice({
+    enableKeyboardShortcuts: false,
+    autoIntroOnFirstPointer: false,
+  })
 
-  const stopSpeechPulse = useCallback(() => {
-    if (speechPulseTimerRef.current) {
-      window.clearInterval(speechPulseTimerRef.current)
-      speechPulseTimerRef.current = null
-    }
-    setSpeechLevel(0)
-  }, [setSpeechLevel])
+  const activationLevel = useMemo(
+    () => (hasAwakened ? 1 : 0.72) + activationPulse * 0.18,
+    [activationPulse, hasAwakened],
+  )
 
-  const startSpeechPulse = useCallback(() => {
-    stopSpeechPulse()
-    setSpeechLevel(0.6)
-    speechPulseTimerRef.current = window.setInterval(() => {
-      setSpeechLevel(0.35 + Math.random() * 0.65)
-    }, 88)
-  }, [setSpeechLevel, stopSpeechPulse])
-
-  const speakReply = useCallback((text: string) => {
-    setSubtitle(text)
-    stopSpeech()
-    startSpeechPulse()
-
-    const utterance = speakText(
-      text,
-      () => {
-        setSpeaking(true)
-        setState('talking')
-      },
-      () => {
-        stopSpeechPulse()
-        setSpeaking(false)
-        window.setTimeout(() => {
-          resetToIdle()
-        }, 140)
-      },
-      () => {
-        setSpeechLevel(0.92)
-      },
-    )
-
-    if (!utterance) {
-      stopSpeechPulse()
-      setSpeaking(false)
-      resetToIdle()
-    }
-  }, [resetToIdle, setSpeaking, setSpeechLevel, setState, setSubtitle, startSpeechPulse, stopSpeechPulse])
-
-  const runVoiceRound = useCallback(async (heardText: string) => {
-    setState('thinking')
-    setSubtitle('Processing voice input...')
-    try {
-      const response = await getAIResponse(heardText)
-      speakReply(response)
-    } catch {
-      speakReply("I hit a processing issue. Let's try that again.")
-    }
-  }, [setState, setSubtitle, speakReply])
-
-  const startListening = useCallback(() => {
-    if (typeof window === 'undefined') return
-    const RecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition
-    if (!RecognitionCtor) {
-      speakReply('Speech recognition is not available in this browser.')
-      return
-    }
-
-    stopSpeech()
-    stopSpeechPulse()
-    transcriptRef.current = ''
-
-    const recognition = new RecognitionCtor()
-    recognitionRef.current = recognition
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
-
-    recognition.onstart = () => {
-      setListening(true)
-      setState('listening')
-      setSubtitle('Listening...')
-    }
-
-    recognition.onresult = (event: any) => {
-      const joined = Array.from(event.results)
-        .map((result: any) => result[0]?.transcript ?? '')
-        .join('')
-        .trim()
-      transcriptRef.current = joined
-      if (joined) setSubtitle(joined)
-    }
-
-    recognition.onerror = () => {
-      setListening(false)
-      resetToIdle()
-    }
-
-    recognition.onend = () => {
-      setListening(false)
-      const heard = transcriptRef.current.trim()
-      if (heard) {
-        runVoiceRound(heard)
-      } else {
-        resetToIdle()
-      }
-    }
-
-    recognition.start()
-  }, [resetToIdle, runVoiceRound, setListening, setState, setSubtitle, speakReply, stopSpeechPulse])
-
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop()
-    setListening(false)
-  }, [setListening])
+  const lastStageRef = useRef<VoicePipelineStage>(VoicePipelineStage.IDLE)
 
   useEffect(() => {
-    setState('idle')
-    setSubtitle('Voice core online. Press V to talk.')
-
-    const onPointerDown = () => {
-      if (introPlayedRef.current) return
-      introPlayedRef.current = true
-      speakReply('Hello. I am Devarapalli Shalem Raju. Press V and speak with me.')
+    const stage = pipeline.stage
+    if (!hasAwakened && stage !== VoicePipelineStage.IDLE) {
+      setHasAwakened(true)
+      setActivationPulse(1)
     }
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) return
-      const key = event.key.toLowerCase()
-      if (key === 'v') {
-        event.preventDefault()
-        if (useAvatarStore.getState().isListening) {
-          stopListening()
-        } else {
-          startListening()
-        }
-      }
-      if (key === 'r') {
-        event.preventDefault()
-        runVoiceRound('hello')
-      }
+    if (
+      lastStageRef.current !== VoicePipelineStage.SPEAKING &&
+      stage === VoicePipelineStage.SPEAKING
+    ) {
+      setActivationPulse(1)
     }
 
-    window.addEventListener('pointerdown', onPointerDown, { once: true })
-    window.addEventListener('keydown', onKeyDown)
+    lastStageRef.current = stage
+  }, [hasAwakened, pipeline.stage])
 
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('pointerdown', onPointerDown)
-      recognitionRef.current?.stop()
-      stopSpeech()
-      stopSpeechPulse()
-    }
-  }, [runVoiceRound, setState, setSubtitle, speakReply, startListening, stopListening, stopSpeechPulse])
+  useEffect(() => {
+    if (activationPulse <= 0) return
+    const timer = window.setTimeout(() => {
+      setActivationPulse((prev) => Math.max(0, prev - 0.08))
+    }, 60)
+    return () => window.clearTimeout(timer)
+  }, [activationPulse])
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[#050816]">
@@ -201,21 +60,29 @@ export default function HomePage() {
       <div className="absolute inset-0 chamber-orbits" />
       <div className="absolute inset-0 chamber-neon-shadow" />
       <div className="absolute inset-0 chamber-haze" />
-      <div className="absolute inset-0 chamber-scanlines opacity-8" />
-      <div className="pointer-events-none absolute inset-x-0 top-[42%] h-px bg-cyan-300/12" />
+      <div className="absolute inset-0 chamber-core-light" />
+      <div className="absolute inset-0 chamber-scanlines opacity-[0.06]" />
+      <div className="chamber-brand">
+        <span className="chamber-brand__text">DEVARAPALLI SHALEM RAJU</span>
+        <span className="chamber-brand__tag">FOUNDER OF OFG • FULL STACK DEVELOPER</span>
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 top-[42%] h-px bg-cyan-300/8" />
+      <motion.div
+        className="pointer-events-none absolute inset-0 chamber-awakening"
+        animate={{ opacity: 0.16 + activationPulse * 0.3 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      />
 
-      <RobotScene state={state} glowIntensity={Math.max(glowIntensity, 0.72)} />
+      <RobotScene
+        state={state}
+        glowIntensity={Math.max(glowIntensity, 0.7)}
+        isSpeaking={isSpeaking}
+        speechLevel={speechLevel}
+        activationLevel={activationLevel}
+      />
 
-      <motion.section
-        className="pointer-events-none absolute left-1/2 top-8 z-30 -translate-x-1/2 text-center"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9 }}
-      >
-        <h1 className="holo-text text-[clamp(22px,2.8vw,40px)] font-semibold tracking-[0.09em]">
-          DEVARAPALLI SHALEM RAJU
-        </h1>
-      </motion.section>
+      <MicOrbButton stage={pipeline.stage} onToggle={toggleListening} />
+      <DynamicContentLayer />
     </main>
   )
 }
